@@ -4,6 +4,7 @@
 #include "gui/VramContext.h"
 #include "backIcon.h"
 #include "settingsIcon.h"
+#include "searchIcon.h"
 #include "heartIcon.h"
 #include "recentIcon.h"
 #include "hGridIcon.h"
@@ -20,12 +21,16 @@ RomBrowserAppBarView::RomBrowserAppBarView(
     const IRomBrowserViewFactory* romBrowserViewFactory)
     : _viewModel(viewModel)
 {
-    _appBarView = displayMode.CreateAppBarView(romBrowserViewFactory, 1, 1);
+    _appBarView = displayMode.CreateAppBarView(romBrowserViewFactory, 1, 2);
     AddChildTail(_appBarView.GetPointer());
 
     _appBarView->SetButtonAction(APP_BAR_BUTTON_BACK, [] (IconButtonView* sender, void* arg)
     {
         ((RomBrowserAppBarViewModel*)arg)->NavigateUp();
+    }, _viewModel);
+    _appBarView->SetButtonAction(APP_BAR_BUTTON_SEARCH, [] (IconButtonView* sender, void* arg)
+    {
+        ((RomBrowserAppBarViewModel*)arg)->ShowSearch();
     }, _viewModel);
     _appBarView->SetButtonAction(APP_BAR_BUTTON_DISPLAY_SETTINGS, [] (IconButtonView* sender, void* arg)
     {
@@ -43,6 +48,10 @@ void RomBrowserAppBarView::InitVram(const VramContext& vramContext)
         u32 backIconVramOffset = objVramManager->Alloc(backIconTilesLen);
         dma_ntrCopy32(3, backIconTiles, objVramManager->GetVramAddress(backIconVramOffset), backIconTilesLen);
         _appBarView->SetButtonIcon(APP_BAR_BUTTON_BACK, backIconVramOffset);
+
+        u32 searchIconVramOffset = objVramManager->Alloc(searchIconTilesLen);
+        dma_ntrCopy32(3, searchIconTiles, objVramManager->GetVramAddress(searchIconVramOffset), searchIconTilesLen);
+        _appBarView->SetButtonIcon(APP_BAR_BUTTON_SEARCH, searchIconVramOffset);
 
         u32 settingsIconVramOffset = objVramManager->Alloc(settingsIconTilesLen);
         dma_ntrCopy32(3, settingsIconTiles, objVramManager->GetVramAddress(settingsIconVramOffset), settingsIconTilesLen);

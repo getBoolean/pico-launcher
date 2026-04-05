@@ -26,6 +26,11 @@ public:
     virtual void HideDisplaySettings() = 0;
     virtual void GotoSettingsScreen() = 0;
 
+    virtual void ShowSearch() = 0;
+    virtual void HideSearch() = 0;
+    virtual void ApplySearch(const char* query, bool includeSubFolders) = 0;
+    virtual const char* GetSearchQuery() const = 0;
+
     virtual void Update() = 0;
 
     virtual const SdFolder& GetSdFolder() const = 0;

@@ -1,11 +1,13 @@
 #include "common.h"
 #include <array>
+#include <string.h>
 #include "picoLoaderBootstrap.h"
 #include "PicoLoaderProcess.h"
 #include "settings/SettingsProcess.h"
 #include "FileType/ExtensionFileTypeProvider.h"
 #include "FileType/FileType.h"
 #include "SdFolderFactory.h"
+#include "RecursiveSdFolderFactory.h"
 #include "services/settings/IAppSettingsService.h"
 #include "cheats/UsrCheatRepositoryFactory.h"
 #include "cheats/EmptyCheatRepository.h"
@@ -66,6 +68,46 @@ void RomBrowserController::GotoSettingsScreen()
     _stateMachine.Fire(RomBrowserStateTrigger::GotoSettingsScreen);
 }
 
+void RomBrowserController::ShowSearch()
+{
+    _stateMachine.Fire(RomBrowserStateTrigger::ShowSearch);
+}
+
+void RomBrowserController::HideSearch()
+{
+    _stateMachine.Fire(RomBrowserStateTrigger::HideSearch);
+}
+
+void RomBrowserController::ApplySearch(const char* query, bool includeSubFolders)
+{
+    StringUtil::Copy(_searchQuery, query, sizeof(_searchQuery));
+    _searchIncludeSubFolders = includeSubFolders;
+
+    if (includeSubFolders && _searchQuery[0])
+    {
+        _searchTask = _ioTaskQueue->Enqueue([this] (const vu8& cancelRequested)
+        {
+            RecursiveSdFolderFactory factory { &_fileTypeProvider };
+            _newSdFolder = factory.CreateFromPathRecursive(".", _searchQuery);
+            return TaskResult<void>::Completed();
+        });
+    }
+    else
+    {
+        _romBrowserViewModel.Reset();
+        const char* sq = _searchQuery[0] ? _searchQuery : nullptr;
+        _romBrowserViewModel = SharedPtr(new RomBrowserViewModel(this, nullptr, sq));
+        _searchResultsUpdated = true;
+    }
+}
+
+bool RomBrowserController::ConsumeSearchResultsUpdated()
+{
+    bool result = _searchResultsUpdated;
+    _searchResultsUpdated = false;
+    return result;
+}
+
 void RomBrowserController::SetRomBrowserDisplaySettings(
     const RomBrowserDisplaySettings& romBrowserDisplaySettings)
 {
@@ -103,6 +145,18 @@ void RomBrowserController::Update()
             {
                 _navigateTask.Dispose();
                 _stateMachine.Fire(RomBrowserStateTrigger::FolderLoadDone);
+            }
+            break;
+        }
+        case RomBrowserState::Search:
+        {
+            if (_searchTask.IsValid() && _searchTask.GetTask().IsCompletedSuccessfully())
+            {
+                _searchTask.Dispose();
+                _romBrowserViewModel.Reset();
+                _sdFolder = std::move(_newSdFolder);
+                _romBrowserViewModel = SharedPtr(new RomBrowserViewModel(this));
+                _searchResultsUpdated = true;
             }
             break;
         }
@@ -146,6 +200,8 @@ void RomBrowserController::HandleTrigger()
 void RomBrowserController::HandleNavigateTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::Navigate\n");
+    _searchQuery[0] = 0;
+    _searchIncludeSubFolders = false;
     _navigateTask = _ioTaskQueue->Enqueue([this] (const vu8& cancelRequested)
     {
         if (!_coverRepository)
@@ -220,7 +276,8 @@ void RomBrowserController::HandleLaunchTrigger()
 void RomBrowserController::HandleChangeDisplayModeTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::ChangeDisplayMode\n");
-    _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this);
+    const char* sq = _searchQuery[0] ? _searchQuery : nullptr;
+    _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this, nullptr, sq);
 }
 
 void RomBrowserController::HandleGotoSettingsScreenTrigger()

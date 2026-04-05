@@ -32,6 +32,12 @@ public:
     void HideDisplaySettings() override;
     void GotoSettingsScreen() override;
 
+    void ShowSearch() override;
+    void HideSearch() override;
+    void ApplySearch(const char* query, bool includeSubFolders) override;
+    bool ConsumeSearchResultsUpdated();
+    const char* GetSearchQuery() const override { return _searchQuery; }
+
     void Update() override;
 
     const SdFolder& GetSdFolder() const override { return *_sdFolder; }
@@ -70,6 +76,10 @@ private:
     FileInfo _triggerFileInfo;
     QueueTask<void> _navigateTask;
     bool _saveSettingsPending = false;
+    char _searchQuery[32] {};
+    bool _searchIncludeSubFolders = false;
+    bool _searchResultsUpdated = false;
+    QueueTask<void> _searchTask;
     std::unique_ptr<CoverRepository> _coverRepository;
     std::unique_ptr<IconRepository> _iconRepository;
     std::unique_ptr<BannerRepository> _bannerRepository;
