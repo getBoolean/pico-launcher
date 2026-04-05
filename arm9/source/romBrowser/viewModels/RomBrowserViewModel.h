@@ -11,7 +11,8 @@ class ICoverRepository;
 class RomBrowserViewModel
 {
 public:
-    RomBrowserViewModel(IRomBrowserController* romBrowserController, const char* initialSelectedFileName = nullptr);
+    RomBrowserViewModel(IRomBrowserController* romBrowserController,
+        const char* initialSelectedFileName = nullptr, const char* searchQuery = nullptr);
 
     FileInfoManager& GetFileInfoManager() const { return *_fileInfoManager; }
     TaskQueueBase* GetIoTaskQueue() const { return _romBrowserController->GetIoTaskQueue(); }

@@ -18,6 +18,11 @@ public:
         _romBrowserController->ShowDisplaySettings();
     }
 
+    void ShowSearch()
+    {
+        _romBrowserController->ShowSearch();
+    }
+
     constexpr RomBrowserLayout GetRomBrowserLayout() const
     {
         return _romBrowserController->GetRomBrowserDisplaySettings().layout;

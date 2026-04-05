@@ -1,7 +1,27 @@
 #include "common.h"
 #include <string.h>
+#include <ctype.h>
 #include <algorithm>
 #include "SdFolder.h"
+
+static bool CaseInsensitiveContains(const char* haystack, const char* needle)
+{
+    if (!needle[0])
+        return true;
+    for (; *haystack; haystack++)
+    {
+        const char* h = haystack;
+        const char* n = needle;
+        while (*h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n))
+        {
+            h++;
+            n++;
+        }
+        if (!*n)
+            return true;
+    }
+    return false;
+}
 
 SdFolder::SdFolder(FileInfo** files, int fileCount)
     : _files(files), _fileCount(fileCount) { }
@@ -16,6 +36,7 @@ SdFolder::~SdFolder()
 std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
     const SdFolderFilterSortParams& filterSortParams, int& resultCount) const
 {
+    bool hasSearchQuery = filterSortParams.searchQuery && filterSortParams.searchQuery[0];
     auto sortedFilteredFiles = std::make_unique<const FileInfo*[]>(_fileCount);
     int filteredCount = 0;
     for (int i = 0; i < _fileCount; i++)
@@ -23,11 +44,18 @@ std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
         const FileInfo* file = _files[i];
         bool isHidden = file->GetFileName()[0] == '.' || file->IsHidden();
         auto classification = file->GetFileType()->GetClassification();
-        if (classification != FileTypeClassification::Unknown &&
-            (!isHidden || filterSortParams.includeHiddenFiles))
+        if (classification == FileTypeClassification::Unknown)
+            continue;
+        if (isHidden && !filterSortParams.includeHiddenFiles)
+            continue;
+        if (hasSearchQuery)
         {
-            sortedFilteredFiles[filteredCount++] = file;
+            if (classification == FileTypeClassification::Folder)
+                continue;
+            if (!CaseInsensitiveContains(file->GetFileName(), filterSortParams.searchQuery))
+                continue;
         }
+        sortedFilteredFiles[filteredCount++] = file;
     }
     std::sort(sortedFilteredFiles.get(), sortedFilteredFiles.get() + filteredCount,
         [filterSortParams] (const FileInfo*& a, const FileInfo*& b)

@@ -8,6 +8,7 @@ public:
     SdFolderSortType sortType = SdFolderSortType::Name;
     SdFolderSortDirection sortDirection = SdFolderSortDirection::Ascending;
     bool includeHiddenFiles = false;
+    const char* searchQuery = nullptr;
 
     SdFolderFilterSortParams() { }
 
