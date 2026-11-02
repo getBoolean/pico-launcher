@@ -52,8 +52,8 @@ void MaterialCoverFlowFileRecyclerAdapter::ReleaseView(SharedPtr<View> view, int
 {
     LOG_DEBUG("Releasing %d\n", index);
     auto coverView = static_cast<MaterialCoverView*>(view.GetPointer());
+    coverView->GetViewModel().CancelQueueTask();
     coverView->ClearCover();
     coverView->GetViewModel().SetIndex(-1);
-    coverView->GetViewModel().CancelQueueTask();
     _fileInfoManager->ReleaseFileInfo(index);
 }

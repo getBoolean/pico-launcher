@@ -36,7 +36,7 @@ public:
 
     virtual void Update() = 0;
 
-    virtual const SdFolder& GetSdFolder() const = 0;
+    virtual SharedPtr<const SdFolder> GetSdFolder() const = 0;
 
     virtual const RomBrowserStateMachine& GetStateMachine() const = 0;
 

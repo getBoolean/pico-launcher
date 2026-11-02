@@ -28,124 +28,97 @@ static bool CaseInsensitiveContains(const char* haystack, const char* needle)
 SharedPtr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
     const char* basePath, const char* searchQuery, const vu8& cancelRequested) const
 {
-    TCHAR savedCwd[256];
-    f_getcwd(savedCwd, sizeof(savedCwd) / sizeof(savedCwd[0]));
-
-    if (f_chdir(basePath) != FR_OK)
-    {
-        f_chdir(savedCwd);
-        auto empty = (FileInfo**)malloc(sizeof(FileInfo*) * 1);
-        return SharedPtr<SdFolder>::MakeShared(empty, 0);
-    }
-
-    int count = 0;
-    int bufferSize = 8;
-    auto fileInfos = (FileInfo**)malloc(sizeof(FileInfo*) * bufferSize);
-
-    // Explicit stack for iterative depth-first traversal
-    // Each entry is a relative path to explore
-    struct DirEntry
+    // Keep directory state on the heap: the IO thread has only a 2 KB stack.
+    // One open directory per depth also bounds memory regardless of folder breadth.
+    struct Frame
     {
         TCHAR path[256];
-        int depth;
+        DIR directory {};
+        bool open = false;
+
+        ~Frame()
+        {
+            if (open)
+                f_closedir(&directory);
+        }
     };
 
-    int stackSize = 0;
-    int stackCapacity = 8;
-    auto stack = (DirEntry*)malloc(sizeof(DirEntry) * stackCapacity);
-
-    // Push the root directory
-    StringUtil::Copy(stack[0].path, ".", sizeof(stack[0].path) / sizeof(stack[0].path[0]));
-    stack[0].depth = 0;
-    stackSize = 1;
-
+    auto frames = std::make_unique<Frame[]>(MAX_DEPTH + 1);
     auto sdFileInfo = std::make_unique<FILINFO>();
-
+    auto cwd = std::make_unique<TCHAR[]>(256);
+    if (f_getcwd(cwd.get(), 256) != FR_OK)
+        return nullptr;
+    const size_t cwdLength = strlen(cwd.get());
+    auto files = (FileInfo**)malloc(sizeof(FileInfo*) * MAX_RESULTS);
+    if (!files)
+        return nullptr;
+    int count = 0;
+    int depth = 0;
     bool canceled = false;
-    while (!canceled && stackSize > 0 && count < MAX_RESULTS)
-    {
-        // Pop
-        stackSize--;
-        DirEntry current = stack[stackSize];
 
-        Directory directory;
-        if (directory.Open(current.path) != FR_OK)
+    StringUtil::Copy(frames[0].path, basePath, sizeof(frames[0].path));
+    frames[0].open = f_opendir(&frames[0].directory, frames[0].path) == FR_OK;
+    if (!frames[0].open)
+        depth = -1;
+
+    while (depth >= 0 && count < MAX_RESULTS)
+    {
+        if (cancelRequested)
+        {
+            canceled = true;
+            break;
+        }
+
+        auto& current = frames[depth];
+        if (f_readdir(&current.directory, sdFileInfo.get()) != FR_OK || !sdFileInfo->fname[0])
+        {
+            f_closedir(&current.directory);
+            current.open = false;
+            depth--;
+            continue;
+        }
+
+        if (sdFileInfo->fname[0] == '.' || (sdFileInfo->fattrib & AM_HID))
             continue;
 
-        while (count < MAX_RESULTS)
+        if (sdFileInfo->fattrib & AM_DIR)
         {
-            if (cancelRequested)
-            {
-                canceled = true;
-                break;
-            }
-
-            if (directory.Read(sdFileInfo.get()) != FR_OK)
-                break;
-
-            if (sdFileInfo->fname[0] == 0)
-                break;
-
-            bool isHidden = sdFileInfo->fname[0] == '.' || (sdFileInfo->fattrib & AM_HID);
-
-            if (isHidden)
+            if (depth == MAX_DEPTH)
                 continue;
-
-            if (sdFileInfo->fattrib & AM_DIR)
-            {
-                // Push sub-directory if within depth limit
-                if (current.depth < MAX_DEPTH)
-                {
-                    if (stackSize >= stackCapacity)
-                    {
-                        stackCapacity *= 2;
-                        stack = (DirEntry*)realloc(stack, sizeof(DirEntry) * stackCapacity);
-                    }
-                    DirEntry& entry = stack[stackSize];
-                    if (strcmp(current.path, ".") == 0)
-                    {
-                        StringUtil::Copy(entry.path, sdFileInfo->fname,
-                            sizeof(entry.path) / sizeof(entry.path[0]));
-                    }
-                    else
-                    {
-                        StringUtil::Copy(entry.path, current.path,
-                            sizeof(entry.path) / sizeof(entry.path[0]));
-                        strlcat(entry.path, "/", sizeof(entry.path));
-                        strlcat(entry.path, sdFileInfo->fname, sizeof(entry.path));
-                    }
-                    entry.depth = current.depth + 1;
-                    stackSize++;
-                }
-            }
+            auto& next = frames[depth + 1];
+            if (strcmp(current.path, ".") == 0)
+                next.path[0] = 0;
             else
             {
-                auto fileType = _fileTypeProvider->GetFileType(sdFileInfo->fname);
-                if (fileType->GetClassification() == FileTypeClassification::Unknown)
+                StringUtil::Copy(next.path, current.path, sizeof(next.path));
+                if (strlcat(next.path, "/", sizeof(next.path)) >= sizeof(next.path))
                     continue;
-
-                if (!CaseInsensitiveContains(sdFileInfo->fname, searchQuery))
-                    continue;
-
-                if (count >= bufferSize)
-                {
-                    bufferSize *= 2;
-                    fileInfos = (FileInfo**)realloc(fileInfos, sizeof(FileInfo*) * bufferSize);
-                }
-                fileInfos[count++] = new FileInfo(sdFileInfo->fname, fileType,
-                    FastFileRef(directory.GetFatFsDirectory(), sdFileInfo.get()),
-                    sdFileInfo->fattrib,
-                    strcmp(current.path, ".") == 0 ? nullptr : current.path);
             }
+            if (strlcat(next.path, sdFileInfo->fname, sizeof(next.path)) >= sizeof(next.path))
+                continue;
+            next.open = f_opendir(&next.directory, next.path) == FR_OK;
+            if (next.open)
+                depth++;
+            continue;
         }
+
+        auto fileType = _fileTypeProvider->GetFileType(sdFileInfo->fname);
+        if (fileType->GetClassification() == FileTypeClassification::Unknown ||
+            !CaseInsensitiveContains(sdFileInfo->fname, searchQuery))
+            continue;
+
+        const bool isCurrentFolder = strcmp(current.path, ".") == 0;
+        const size_t parentLength = isCurrentFolder ? 0 : strlen(current.path) + 1;
+        const size_t separatorLength = cwdLength && cwd[cwdLength - 1] == '/' ? 0 : 1;
+        if (cwdLength + separatorLength + parentLength + strlen(sdFileInfo->fname) >= 256)
+            continue;
+
+        files[count++] = new FileInfo(sdFileInfo->fname, fileType,
+            FastFileRef(&current.directory, sdFileInfo.get()), sdFileInfo->fattrib,
+            isCurrentFolder ? nullptr : current.path);
     }
 
-    free(stack);
-    f_chdir(savedCwd);
-
-    // Constructing the folder first ensures the found files are freed when canceled
-    auto result = SharedPtr<SdFolder>::MakeShared(fileInfos, count);
-    if (canceled)
-        return nullptr;
-    return result;
+    // The folder owns all collected files even when cancellation discards them.
+    auto result = SharedPtr<SdFolder>::MakeShared(files, count);
+    return canceled ? nullptr : result;
 }

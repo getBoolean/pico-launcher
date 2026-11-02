@@ -23,13 +23,19 @@ const char* const KeyboardView::sRows[ROW_COUNT] = { sRow0, sRow1, sRow2, sRow3 
 const int KeyboardView::sRowLengths[ROW_COUNT] = { 10, 10, 10, 9 };
 const int KeyboardView::sRowOffsets[ROW_COUNT] = { 0, 0, 10, 20 };
 
-KeyboardView::KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader)
-    : _font(font), _vblankTextureLoader(vblankTextureLoader)
+KeyboardView::KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader,
+    u32 textureOffset)
+    : _font(font), _vblankTextureLoader(vblankTextureLoader), _texVramOffset(textureOffset)
 {
     u32 texWidth = std::bit_ceil((u32)KEYBOARD_WIDTH);
     u32 texHeight = KEYBOARD_HEIGHT;
     _tileBufferSize = texWidth * texHeight;
     _tileBuffer = std::make_unique_for_overwrite<u8[]>(_tileBufferSize);
+}
+
+KeyboardView::~KeyboardView()
+{
+    _vblankTextureLoader->CancelLoad(_textureLoadRequest);
 }
 
 char KeyboardView::GetKeyAt(int row, int col) const
@@ -101,11 +107,6 @@ void KeyboardView::RenderKeyboard()
 
 void KeyboardView::InitVram(const VramContext& vramContext)
 {
-    const auto texVramManager = vramContext.GetTexVramManager();
-    if (texVramManager)
-    {
-        _texVramOffset = texVramManager->Alloc(_tileBufferSize);
-    }
     RenderKeyboard();
 }
 

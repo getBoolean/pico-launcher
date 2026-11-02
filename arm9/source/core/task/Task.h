@@ -13,7 +13,9 @@ public:
 
     virtual ~TaskBase() { }
 
-    void Execute(u32 irqs);
+    // Completion can wake a caller that destroys this task before Execute returns.
+    // The queue may access it afterwards only when this returns true.
+    bool Execute(u32 irqs);
 
     TaskState GetState() const { return _state; }
 
@@ -40,7 +42,7 @@ private:
     volatile TaskState _state = TaskState::NotStarted;
     volatile u8 _destroyWhenComplete = false;
 
-    void SetFinalState(TaskState finalState);
+    bool SetFinalState(TaskState finalState);
 };
 
 template <class T>

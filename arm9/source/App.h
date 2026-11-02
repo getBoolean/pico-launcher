@@ -34,6 +34,7 @@ class alignas(32) App : public IProcess
 {
 public:
     App(IAppSettingsService& appSettingsService, IBgmService& bgmService);
+    ~App();
 
     void Run() override;
     void Exit() override;
@@ -99,6 +100,7 @@ private:
 
     ChipView::VramToken _chipViewVram;
     IconButton2DView::VramToken _iconButtonViewVram;
+    u32 _keyboardTextureOffset = 0;
 
     bool _vcountIrqStarted = false;
 

@@ -66,9 +66,9 @@ void IconGridFileRecyclerAdapter::ReleaseView(SharedPtr<View> view, int index) c
 {
     LOG_DEBUG("Releasing %d\n", index);
     auto iconGridItemView = static_cast<IconGridItemView*>(view.GetPointer());
+    iconGridItemView->GetViewModel().CancelQueueTask();
     iconGridItemView->SetIcon(nullptr);
     iconGridItemView->GetViewModel().SetIndex(-1);
-    iconGridItemView->GetViewModel().CancelQueueTask();
     _fileInfoManager->ReleaseFileInfo(index);
 }
 

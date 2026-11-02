@@ -49,7 +49,7 @@ private:
     SearchBottomSheetView(IRomBrowserController* controller,
         const MaterialColorScheme* materialColorScheme,
         const IFontRepository* fontRepository,
-        VBlankTextureLoader* vblankTextureLoader);
+        VBlankTextureLoader* vblankTextureLoader, u32 keyboardTextureOffset);
 
     static void OnKeyPress(char key, void* context);
     void HandleKeyPress(char key);

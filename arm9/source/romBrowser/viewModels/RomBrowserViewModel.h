@@ -30,6 +30,8 @@ public:
 
 private:
     IRomBrowserController* _romBrowserController;
+    // FileInfoManager stores pointers into this folder.
+    SharedPtr<const SdFolder> _sdFolder;
     std::unique_ptr<FileInfoManager> _fileInfoManager;
     int _selectedItem = -1;
     u32 _iconFrameCounter = 0;

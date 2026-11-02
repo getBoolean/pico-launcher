@@ -32,6 +32,16 @@ public:
         }
     }
 
+    void CancelAndWait()
+    {
+        if (_task)
+        {
+            _task->RequestCancel();
+            _task->Wait();
+            Dispose();
+        }
+    }
+
     constexpr bool IsValid() const { return _task != nullptr; }
 
 protected:
@@ -130,7 +140,7 @@ public:
         u32 irqs = rtos_disableIrqs();
         if (task->IsCompleted())
         {
-            if (task->link.prev != nullptr || task->link.next != nullptr)
+            if (_taskList.GetHead() == task || task->link.prev != nullptr || task->link.next != nullptr)
             {
                 _taskList.Remove(task);
             }

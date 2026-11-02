@@ -24,7 +24,8 @@ public:
 
     void CancelQueueTask() override
     {
-        _queueTask.CancelTask();
+        // ReleaseView frees file info and reuses VRAM as soon as this returns.
+        _queueTask.CancelAndWait();
     }
 
     void DisposeQueueTaskWhenComplete() override

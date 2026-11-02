@@ -1,6 +1,8 @@
 #pragma once
 #include "core/task/TaskQueue.h"
 #include "gui/views/RecyclerAdapter.h"
+#include "core/EnableSharedFromThis.h"
+#include "viewModels/RomBrowserViewModel.h"
 
 class FileInfoManager;
 class IVramManager;
@@ -9,9 +11,13 @@ class IThemeFileIconFactory;
 class VramContext;
 class IRomBrowserController;
 
-class FileRecyclerAdapter : public RecyclerAdapter
+class FileRecyclerAdapter : public RecyclerAdapter, public EnableSharedFromThis<FileRecyclerAdapter>
 {
 public:
+    void SetViewModel(SharedPtr<RomBrowserViewModel> viewModel)
+    {
+        _viewModel = std::move(viewModel);
+    }
     u32 GetItemCount() const override;
     void BindView(SharedPtr<View> view, int index) const override;
 
@@ -23,6 +29,7 @@ public:
     virtual void InitVram(const VramContext& vramContext) { }
 
 protected:
+    SharedPtr<RomBrowserViewModel> _viewModel;
     IRomBrowserController* _romBrowserController;
     FileInfoManager* _fileInfoManager;
     TaskQueueBase* _taskQueue;

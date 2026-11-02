@@ -5,7 +5,7 @@
 
 RomBrowserViewModel::RomBrowserViewModel(IRomBrowserController* romBrowserController,
     const char* initialSelectedFileName, const char* searchQuery)
-    : _romBrowserController(romBrowserController)
+    : _romBrowserController(romBrowserController), _sdFolder(romBrowserController->GetSdFolder())
 {
     SdFolderFilterSortParams filterSortParams;
     switch (romBrowserController->GetRomBrowserDisplaySettings().sortMode)
@@ -32,9 +32,8 @@ RomBrowserViewModel::RomBrowserViewModel(IRomBrowserController* romBrowserContro
     }
     filterSortParams.searchQuery = searchQuery;
     u64 startTick = gTickCounter.GetValue();
-    const auto& sdFolder = romBrowserController->GetSdFolder();
     u32 filteredCount;
-    auto sortedFilteredFiles = sdFolder.FilterAndSort(filterSortParams, filteredCount);
+    auto sortedFilteredFiles = _sdFolder->FilterAndSort(filterSortParams, filteredCount);
     u64 endTick = gTickCounter.GetValue();
     LOG_DEBUG("Filter + sort took: %d us\n", (u32)TickCounter::TicksToMicroSeconds(endTick - startTick));
     _fileInfoManager = std::make_unique<FileInfoManager>(std::move(sortedFilteredFiles),

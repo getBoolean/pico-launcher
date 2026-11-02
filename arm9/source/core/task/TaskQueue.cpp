@@ -16,8 +16,7 @@ void TaskQueueBase::ThreadMain()
                 break;
             }
             _taskList.Remove(task);
-            task->Execute(irqs);
-            if (task->GetDestroyWhenComplete())
+            if (task->Execute(irqs))
             {
                 // this will destroy the task
                 ReturnOwnership(task);

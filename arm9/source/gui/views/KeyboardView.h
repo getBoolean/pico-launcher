@@ -11,6 +11,7 @@ class alignas(32) KeyboardView : public View
     SHARED_ONLY(KeyboardView)
 
 public:
+    ~KeyboardView() override;
     typedef void (*key_callback_t)(char key, void* context);
 
     void InitVram(const VramContext& vramContext) override;
@@ -49,6 +50,7 @@ public:
 
     static constexpr int KEYBOARD_WIDTH = 220;
     static constexpr int KEYBOARD_HEIGHT = 80;
+    static constexpr u32 TEXTURE_SIZE = 256 * KEYBOARD_HEIGHT;
 
 private:
     static constexpr int KEY_WIDTH = 20;
@@ -81,7 +83,8 @@ private:
     u32 _texVramOffset = 0;
     u32 _tileBufferSize = 0;
     std::unique_ptr<u8[]> _tileBuffer;
-    KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader);
+    KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader,
+        u32 textureOffset);
 
     void RenderKeyboard();
     char GetKeyAt(int row, int col) const;

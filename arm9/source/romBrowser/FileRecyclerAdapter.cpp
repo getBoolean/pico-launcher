@@ -11,7 +11,8 @@ u32 FileRecyclerAdapter::GetItemCount() const
 void FileRecyclerAdapter::BindView(SharedPtr<View> view, int index) const
 {
     LOG_DEBUG("Binding %d\n", index);
-    auto queueTask = _taskQueue->Enqueue([=, this] (const vu8& cancelRequested)
+    auto self = const_cast<FileRecyclerAdapter*>(this)->SharedFromThis();
+    auto queueTask = _taskQueue->Enqueue([self, view, index] (const vu8& cancelRequested)
     {
         if (cancelRequested)
         {
@@ -20,14 +21,14 @@ void FileRecyclerAdapter::BindView(SharedPtr<View> view, int index) const
         }
 
         LOG_DEBUG("Started task to load %d\n", index);
-        _fileInfoManager->LoadFileInfo(index);
-        auto internalFileInfo = _fileInfoManager->GetInternalFileInfo(index);
+        self->_fileInfoManager->LoadFileInfo(index);
+        auto internalFileInfo = self->_fileInfoManager->GetInternalFileInfo(index);
         if (cancelRequested)
         {
-            _fileInfoManager->ReleaseFileInfo(index);
+            self->_fileInfoManager->ReleaseFileInfo(index);
             return TaskResult<void>::Canceled();
         }
-        return BindView(view, index, internalFileInfo, cancelRequested);
+        return self->BindView(view, index, internalFileInfo, cancelRequested);
     });
     SetQueueTask(view, std::move(queueTask));
 }

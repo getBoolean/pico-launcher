@@ -110,6 +110,14 @@ void App::VCountIrq()
     _mainObjPltt.VCount();
 }
 
+App::~App()
+{
+    // Drain tasks while their controller, repositories and views still exist.
+    _romBrowserController.CancelSearchTask();
+    _ioTaskQueue.StopThread();
+    _bgTaskQueue.StopThread();
+}
+
 void App::Run()
 {
     InitVramMapping();
@@ -126,6 +134,8 @@ void App::Run()
     _dialogPresenter.InitVram();
 
     LoadTheme();
+
+    _keyboardTextureOffset = _textureVram.Alloc(KeyboardView::TEXTURE_SIZE);
 
     _ioTaskQueue.StartThread(1, _ioTaskThreadStack, sizeof(_ioTaskThreadStack));
     _bgTaskQueue.StartThread(2, _bgTaskThreadStack, sizeof(_bgTaskThreadStack));
@@ -241,6 +251,7 @@ void App::MainLoop()
 
 void App::Exit()
 {
+    _romBrowserController.CancelSearchTask();
     _fadeAnimator.Goto(16, 16, &md::sys::motion::easing::linear);
     _exit = true;
 }
@@ -342,7 +353,7 @@ void App::HandleShowSearchTrigger()
 {
     auto searchDialog = SearchBottomSheetView::CreateShared(
         &_romBrowserController, &_theme->GetMaterialColorScheme(),
-        _theme->GetFontRepository(), &_vblankTextureLoader);
+        _theme->GetFontRepository(), &_vblankTextureLoader, _keyboardTextureOffset);
     searchDialog->SetGraphics(_iconButtonViewVram);
     _dialogPresenter.ShowDialog(std::move(searchDialog));
 }
@@ -419,7 +430,15 @@ void App::Update()
     }
     if (_romBrowserController.ConsumeSearchResultsUpdated())
     {
+        bool restoreFocus = (_focusManager.IsFocusInside(_romBrowserBottomScreenView.GetPointer()) &&
+            !_romBrowserBottomScreenView->IsAppBarFocused(_focusManager)) ||
+            (!_focusManager.GetCurrentFocus() && curState == RomBrowserState::Browser);
+        _dialogPresenter.ClearOldFocus();
+        if (restoreFocus)
+            _focusManager.Unfocus();
         RecreateRomBrowserTopScreenView();
+        if (restoreFocus)
+            _romBrowserBottomScreenView->Focus(_focusManager);
     }
     if (stateMachine.HasStateChanged())
     {

@@ -78,10 +78,10 @@ void BannerListFileRecyclerAdapter::ReleaseView(SharedPtr<View> view, int index)
 {
     LOG_DEBUG("Releasing %d\n", index);
     auto listItemView = static_cast<BannerListItemView*>(view.GetPointer());
+    listItemView->GetViewModel().CancelQueueTask();
     listItemView->SetIcon(nullptr);
     listItemView->SetGameTitle(u"");
     listItemView->GetViewModel().SetIndex(-1);
-    listItemView->GetViewModel().CancelQueueTask();
     _fileInfoManager->ReleaseFileInfo(index);
 }
 

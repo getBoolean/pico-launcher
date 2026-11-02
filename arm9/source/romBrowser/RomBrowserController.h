@@ -18,6 +18,7 @@ class RomBrowserController : public IRomBrowserController
 public:
     RomBrowserController(IAppSettingsService* appSettingsService,
         TaskQueueBase* ioTaskQueue, TaskQueueBase* bgTaskQueue);
+    ~RomBrowserController();
 
     void NavigateUp() override
     {
@@ -38,14 +39,15 @@ public:
     bool ConsumeSearchResultsUpdated();
     const char* GetSearchQuery() const override { return _searchQuery; }
     void ClearSearch() override;
+    void CancelSearchTask();
     bool IsSearchActive() const override { return _searchQuery[0] != 0; }
     bool IsSearchIncludingSubFolders() const override { return _searchIncludeSubFolders; }
 
     void Update() override;
 
-    const SdFolder& GetSdFolder() const override
+    SharedPtr<const SdFolder> GetSdFolder() const override
     {
-        return _searchResultFolder ? *_searchResultFolder : *_sdFolder;
+        return _searchResultFolder ? _searchResultFolder : _sdFolder;
     }
 
     const RomBrowserStateMachine& GetStateMachine() const override { return _stateMachine; }
@@ -73,7 +75,7 @@ private:
     TaskQueueBase* _ioTaskQueue;
     TaskQueueBase* _bgTaskQueue;
 
-    std::unique_ptr<SdFolder> _sdFolder;
+    SharedPtr<SdFolder> _sdFolder;
     SharedPtr<RomBrowserViewModel> _romBrowserViewModel;
     std::unique_ptr<SdFolder> _newSdFolder;
     RomBrowserStateMachine _stateMachine;
@@ -103,6 +105,5 @@ private:
     void UpdateLastUsedFilepath();
     void SetPicoLoaderParams() const;
     void LoadCheats() const;
-    void CancelSearchTask();
     void RecreateRomBrowserViewModel(const char* initialSelectedFileName = nullptr);
 };

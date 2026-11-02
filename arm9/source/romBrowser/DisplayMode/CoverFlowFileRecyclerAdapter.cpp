@@ -52,9 +52,9 @@ void CoverFlowFileRecyclerAdapter::ReleaseView(SharedPtr<View> view, int index) 
 {
     LOG_DEBUG("Releasing %d\n", index);
     auto coverView = static_cast<CoverView*>(view.GetPointer());
+    coverView->GetViewModel().CancelQueueTask();
     coverView->ClearCover();
     coverView->GetViewModel().SetIndex(-1);
-    coverView->GetViewModel().CancelQueueTask();
     _fileInfoManager->ReleaseFileInfo(index);
 }
 

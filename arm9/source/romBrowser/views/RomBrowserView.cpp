@@ -16,6 +16,7 @@ RomBrowserView::RomBrowserView(
     AddChildTail(_fileGridView.GetPointer());
     _fileRecyclerAdapter = displayMode.CreateRecyclerAdapter(
         _viewModel.GetPointer(), themeFileIconFactory, romBrowserViewFactory, vblankTextureLoader);
+    _fileRecyclerAdapter->SetViewModel(_viewModel);
 }
 
 void RomBrowserView::InitVram(const VramContext& vramContext)
