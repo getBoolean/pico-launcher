@@ -18,6 +18,16 @@ The back arrow on the top left of the bottom screen can also be used to go up to
 
 Touch input is also supported.
 
+## Searching
+To search for a file, move the selector to the search icon, just left of the cogwheel, and press A. A keyboard opens on the bottom screen.
+
+- DPAD and A: Type on the keyboard. You can also tap the keys.
+- Folder button (top right): Also search the subfolders of the current folder, up to 8 levels deep. At most 256 results are shown.
+- Y: Clear the search.
+- B: Close the keyboard. The results stay in the file browser, so you can launch them.
+
+Search ignores upper and lower case and matches any part of the file name. While a search is active, the search icon is highlighted. Opening a folder or going up a folder ends the search.
+
 ## Settings menu
 The settings menu can be accessed by using the DPAD to move the selector to the cogwheel icon and pressing A. When in the settings menu, press the B button will to return to the file browser.
 
