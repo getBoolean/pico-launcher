@@ -39,6 +39,7 @@ public:
     const char* GetSearchQuery() const override { return _searchQuery; }
     void ClearSearch() override;
     bool IsSearchActive() const override { return _searchQuery[0] != 0; }
+    bool IsSearchIncludingSubFolders() const override { return _searchIncludeSubFolders; }
 
     void Update() override;
 

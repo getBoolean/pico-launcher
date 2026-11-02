@@ -22,6 +22,10 @@ public:
     SharedPtr<View> MoveFocus(const SharedPtr<View>& currentFocus,
         FocusMoveDirection direction, View* source) override;
 
+    void HandlePenDown(const Point& touchPoint, FocusManager& focusManager) override;
+    void HandlePenMove(const Point& touchPoint, FocusManager& focusManager) override;
+    void HandlePenUp(const Point& lastTouchPoint, FocusManager& focusManager) override;
+
     Rectangle GetBounds() const override
     {
         return Rectangle(_position.x, _position.y, KEYBOARD_WIDTH, KEYBOARD_HEIGHT);
@@ -39,6 +43,9 @@ public:
 
     int GetFocusedRow() const { return _focusRow; }
     int GetFocusedCol() const { return _focusCol; }
+
+    /// @brief Gets whether the focused key is the last key of its row.
+    bool IsFocusAtRowEnd() const { return _focusCol == sRowLengths[_focusRow] - 1; }
 
     static constexpr int KEYBOARD_WIDTH = 220;
     static constexpr int KEYBOARD_HEIGHT = 80;
@@ -67,6 +74,10 @@ private:
     int _focusRow = 0;
     int _focusCol = 0;
 
+    /// @brief Key the pen went down on, or -1 if none.
+    int _penDownRow = -1;
+    int _penDownCol = -1;
+
     u32 _texVramOffset = 0;
     u32 _tileBufferSize = 0;
     std::unique_ptr<u8[]> _tileBuffer;
@@ -74,5 +85,7 @@ private:
 
     void RenderKeyboard();
     char GetKeyAt(int row, int col) const;
+    bool HitTest(const Point& point, int& row, int& col) const;
+    void PressKey(int row, int col);
     void ClampCol();
 };

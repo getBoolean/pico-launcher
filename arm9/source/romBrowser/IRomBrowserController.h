@@ -32,6 +32,7 @@ public:
     virtual const char* GetSearchQuery() const = 0;
     virtual void ClearSearch() = 0;
     virtual bool IsSearchActive() const = 0;
+    virtual bool IsSearchIncludingSubFolders() const = 0;
 
     virtual void Update() = 0;
 

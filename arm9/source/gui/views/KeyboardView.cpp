@@ -11,17 +11,17 @@
 // QWERTY layout with special keys
 // Row 0: 1234567890 (10 keys)
 // Row 1: QWERTYUIOP (10 keys)
-// Row 2: ASDFGHJKL  (9 keys)
-// Row 3: ZXCVBNM <  (8 keys: 7 letters + backspace)
+// Row 2: ASDFGHJKL- (10 keys)
+// Row 3: ZXCVBNM_< (9 keys: 7 letters + space + backspace)
 
 static const char sRow0[] = "1234567890";
 static const char sRow1[] = "QWERTYUIOP";
-static const char sRow2[] = "ASDFGHJKL";
-static const char sRow3[] = "ZXCVBNM\b";
+static const char sRow2[] = "ASDFGHJKL-";
+static const char sRow3[] = "ZXCVBNM \b";
 
 const char* const KeyboardView::sRows[ROW_COUNT] = { sRow0, sRow1, sRow2, sRow3 };
-const int KeyboardView::sRowLengths[ROW_COUNT] = { 10, 10, 9, 8 };
-const int KeyboardView::sRowOffsets[ROW_COUNT] = { 0, 0, 10, 16 };
+const int KeyboardView::sRowLengths[ROW_COUNT] = { 10, 10, 10, 9 };
+const int KeyboardView::sRowOffsets[ROW_COUNT] = { 0, 0, 10, 20 };
 
 KeyboardView::KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader)
     : _font(font), _vblankTextureLoader(vblankTextureLoader)
@@ -66,6 +66,10 @@ void KeyboardView::RenderKeyboard()
             if (key == '\b')
             {
                 charBuf[0] = u'<';
+            }
+            else if (key == ' ')
+            {
+                charBuf[0] = u'_';
             }
             else
             {
@@ -172,14 +176,72 @@ bool KeyboardView::HandleInput(const InputProvider& inputProvider, FocusManager&
 {
     if (inputProvider.Triggered(InputKey::A))
     {
-        char key = GetKeyAt(_focusRow, _focusCol);
-        if (key && _onKeyPress)
-        {
-            _onKeyPress(key, _onKeyPressContext);
-        }
+        PressKey(_focusRow, _focusCol);
         return true;
     }
     return View::HandleInput(inputProvider, focusManager);
+}
+
+void KeyboardView::PressKey(int row, int col)
+{
+    char key = GetKeyAt(row, col);
+    if (key && _onKeyPress)
+    {
+        _onKeyPress(key, _onKeyPressContext);
+    }
+}
+
+bool KeyboardView::HitTest(const Point& point, int& row, int& col) const
+{
+    if (!GetBounds().Contains(point))
+        return false;
+
+    row = (point.y - _position.y) / KEY_HEIGHT;
+    if (row < 0 || row >= ROW_COUNT)
+        return false;
+
+    int x = point.x - _position.x - sRowOffsets[row];
+    if (x < 0)
+        return false;
+
+    col = x / KEY_WIDTH;
+    return col < sRowLengths[row];
+}
+
+void KeyboardView::HandlePenDown(const Point& touchPoint, FocusManager& focusManager)
+{
+    if (!HitTest(touchPoint, _penDownRow, _penDownCol))
+    {
+        _penDownRow = -1;
+        _penDownCol = -1;
+    }
+}
+
+void KeyboardView::HandlePenMove(const Point& touchPoint, FocusManager& focusManager)
+{
+    // Sliding off the key cancels the press
+    int row, col;
+    if (!HitTest(touchPoint, row, col) || row != _penDownRow || col != _penDownCol)
+    {
+        _penDownRow = -1;
+        _penDownCol = -1;
+    }
+}
+
+void KeyboardView::HandlePenUp(const Point& lastTouchPoint, FocusManager& focusManager)
+{
+    int row, col;
+    if (_penDownRow >= 0 && HitTest(lastTouchPoint, row, col) &&
+        row == _penDownRow && col == _penDownCol)
+    {
+        _focusRow = row;
+        _focusCol = col;
+        focusManager.Focus(SharedFromThis());
+        PressKey(row, col);
+    }
+
+    _penDownRow = -1;
+    _penDownCol = -1;
 }
 
 SharedPtr<View> KeyboardView::MoveFocus(const SharedPtr<View>& currentFocus,

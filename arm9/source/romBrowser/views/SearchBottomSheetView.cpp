@@ -19,6 +19,8 @@
 #define KEYBOARD_Y          50
 #define TOGGLE_X            206
 #define TOGGLE_Y_OFFSET     28
+#define HINT_LABEL_X        20
+#define HINT_LABEL_Y        134
 
 SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     const MaterialColorScheme* materialColorScheme,
@@ -28,6 +30,7 @@ SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     , _materialColorScheme(materialColorScheme)
     , _titleLabel(Label2DView::CreateShared(128, 16, 25, fontRepository->GetFont(FontType::Medium11)))
     , _queryLabel(Label2DView::CreateShared(176, 14, MAX_TEXT_LENGTH + 1, fontRepository->GetFont(FontType::Regular10)))
+    , _hintLabel(Label2DView::CreateShared(176, 14, 25, fontRepository->GetFont(FontType::Regular10)))
     , _keyboardView(KeyboardView::CreateShared(fontRepository->GetFont(FontType::Regular10), vblankTextureLoader))
     , _subFolderToggle(IconButton2DView::CreateShared(
         IconButtonView::Type::Tonal,
@@ -39,6 +42,8 @@ SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     _titleLabel->SetText(u"Search");
     AddChildTail(_titleLabel.GetPointer());
     AddChildTail(_queryLabel.GetPointer());
+    _hintLabel->SetText(u"Y: Clear   B: Close");
+    AddChildTail(_hintLabel.GetPointer());
     AddChildTail(_keyboardView.GetPointer());
     AddChildTail(_subFolderToggle.GetPointer());
 
@@ -48,20 +53,36 @@ SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     {
         auto self = static_cast<SearchBottomSheetView*>(arg);
         self->_includeSubFolders = !self->_includeSubFolders;
-        self->_subFolderToggle->SetState(self->_includeSubFolders
-            ? IconButtonView::State::ToggleSelected
-            : IconButtonView::State::ToggleUnselected);
+        self->UpdateSubFolderToggle();
         self->ApplySearch();
     }, this);
 
-    // Restore previous search query if any
+    // Restore the active search, if any
     const char* prevQuery = controller->GetSearchQuery();
     if (prevQuery && prevQuery[0])
     {
         StringUtil::Copy(_text, prevQuery, MAX_TEXT_LENGTH);
     }
+    _includeSubFolders = controller->IsSearchIncludingSubFolders();
 
     UpdateQueryLabel();
+    UpdateSubFolderToggle();
+}
+
+void SearchBottomSheetView::UpdateSubFolderToggle()
+{
+    _subFolderToggle->SetState(_includeSubFolders
+        ? IconButtonView::State::ToggleSelected
+        : IconButtonView::State::ToggleUnselected);
+}
+
+void SearchBottomSheetView::ClearQuery()
+{
+    _text[0] = 0;
+    _includeSubFolders = false;
+    UpdateQueryLabel();
+    UpdateSubFolderToggle();
+    ApplySearch();
 }
 
 void SearchBottomSheetView::OnKeyPress(char key, void* context)
@@ -99,13 +120,13 @@ void SearchBottomSheetView::UpdateQueryLabel()
         char display[MAX_TEXT_LENGTH + 2];
         u32 len = strlen(_text);
         memcpy(display, _text, len);
-        display[len] = '_';
+        display[len] = '|';
         display[len + 1] = 0;
         _queryLabel->SetText(display);
     }
     else
     {
-        _queryLabel->SetText("_");
+        _queryLabel->SetText("|");
     }
 }
 
@@ -132,6 +153,7 @@ void SearchBottomSheetView::Update()
 
     _titleLabel->SetPosition(TITLE_LABEL_X, _position.y + TITLE_LABEL_Y);
     _queryLabel->SetPosition(QUERY_LABEL_X, _position.y + QUERY_LABEL_Y);
+    _hintLabel->SetPosition(HINT_LABEL_X, _position.y + HINT_LABEL_Y);
     _keyboardView->SetPosition(KEYBOARD_X, _position.y + KEYBOARD_Y);
     _subFolderToggle->SetPosition(TOGGLE_X, _position.y + TOGGLE_Y_OFFSET);
 }
@@ -146,6 +168,8 @@ void SearchBottomSheetView::Draw(GraphicsContext& graphicsContext)
         _titleLabel->SetForegroundColor(_materialColorScheme->onSurface);
         _queryLabel->SetBackgroundColor(background);
         _queryLabel->SetForegroundColor(_materialColorScheme->onSurface);
+        _hintLabel->SetBackgroundColor(background);
+        _hintLabel->SetForegroundColor(_materialColorScheme->onSurfaceVariant);
         _keyboardView->SetBackgroundColor(background);
         _keyboardView->SetForegroundColor(_materialColorScheme->onSurface);
         _keyboardView->SetHighlightColor(
@@ -164,6 +188,11 @@ bool SearchBottomSheetView::HandleInput(
         Close();
         return true;
     }
+    if (inputProvider.Triggered(InputKey::Y))
+    {
+        ClearQuery();
+        return true;
+    }
     return false;
 }
 
@@ -179,9 +208,8 @@ SharedPtr<View> SearchBottomSheetView::MoveFocus(const SharedPtr<View>& currentF
 
     if (currentFocus.GetPointer() == _keyboardView.GetPointer())
     {
-        // Leave the keyboard to the right from the rightmost column
-        if (direction == FocusMoveDirection::Right &&
-            _keyboardView->GetFocusedCol() >= 9)
+        // Leave the keyboard to the right from the last key of a row
+        if (direction == FocusMoveDirection::Right && _keyboardView->IsFocusAtRowEnd())
         {
             return _subFolderToggle;
         }

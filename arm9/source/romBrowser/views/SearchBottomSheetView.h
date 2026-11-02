@@ -39,6 +39,7 @@ private:
 
     SharedPtr<Label2DView> _titleLabel;
     SharedPtr<Label2DView> _queryLabel;
+    SharedPtr<Label2DView> _hintLabel;
     SharedPtr<KeyboardView> _keyboardView;
     SharedPtr<IconButton2DView> _subFolderToggle;
 
@@ -53,6 +54,8 @@ private:
     static void OnKeyPress(char key, void* context);
     void HandleKeyPress(char key);
     void UpdateQueryLabel();
+    void UpdateSubFolderToggle();
+    void ClearQuery();
     void ApplySearch();
 
     u32 LoadIcon(IVramManager& vramManager, const unsigned int* tiles, u32 tilesLength) const;

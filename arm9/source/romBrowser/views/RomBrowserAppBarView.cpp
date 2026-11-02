@@ -38,6 +38,14 @@ RomBrowserAppBarView::RomBrowserAppBarView(
     }, _viewModel);
 }
 
+void RomBrowserAppBarView::Update()
+{
+    _appBarView->SetButtonState(APP_BAR_BUTTON_SEARCH, _viewModel->IsSearchActive()
+        ? IconButtonView::State::ToggleSelected
+        : IconButtonView::State::NoToggle);
+    ViewContainer::Update();
+}
+
 void RomBrowserAppBarView::InitVram(const VramContext& vramContext)
 {
     ViewContainer::InitVram(vramContext);
