@@ -12,7 +12,6 @@ import subprocess
 import zipfile
 
 
-LOADER_SHA256 = "07b4d3aa03233509e04fc9f75aacb30d4e0a43d9dba74e0732bae3588e2d5d8c"
 LOADER_FILES = ("picoLoader7.bin", "picoLoader9.bin", "aplist.bin",
                 "savelist.bin", "patchlist.bin")
 
@@ -21,17 +20,17 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def prepare_tree(repo, loader_archive, children, destination, manifest):
+def prepare_tree(repo, loader_archive, children, destination, manifest, loader_sha256):
     """Return input/content identity, creating a fresh tree only after admission."""
     repo, loader_archive, destination = map(Path, (repo, loader_archive, destination))
-    if sha256(loader_archive) != LOADER_SHA256:
-        raise ValueError("Pico Loader archive SHA-256 does not match pinned v1.7.1")
+    if sha256(loader_archive) != loader_sha256:
+        raise ValueError("Pico Loader archive SHA-256 does not match the dependency lock")
     with zipfile.ZipFile(loader_archive) as archive:
         missing = set(LOADER_FILES) - set(archive.namelist())
         if missing:
             raise ValueError(f"Missing loader files: {', '.join(sorted(missing))}")
         loader = {name: archive.read(name) for name in LOADER_FILES}
-    header = (repo / "common/picoLoader7.h").read_text()
+    header = (repo / "common/picoLoader7.h").read_text(encoding="utf-8")
     expected_api = int(re.search(r"#define\s+PICO_LOADER_API_VERSION\s+(\d+)", header)[1])
     binary_api = struct.unpack_from("<H", loader["picoLoader7.bin"], 10)[0]
     if binary_api != expected_api or binary_api != manifest["loader_api"]:
@@ -72,7 +71,7 @@ def prepare_tree(repo, loader_archive, children, destination, manifest):
     os.utime(destination, (manifest["timestamp"], manifest["timestamp"]))
     return {
         "format": manifest["format"],
-        "loader_sha256": LOADER_SHA256,
+        "loader_sha256": loader_sha256,
         "loader_api": binary_api,
         "manifest_sha256": hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
         "initial_state": manifest["initial_state"],
@@ -85,6 +84,8 @@ def main():
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--manifest", type=Path,
                         default=Path(__file__).parent / "fixtures/manifest.json")
+    parser.add_argument("--lock", type=Path,
+                        default=Path(__file__).resolve().parents[2] / "tools/emulator/versions.json")
     parser.add_argument("--loader-archive", type=Path, required=True)
     parser.add_argument("--child-a", type=Path, required=True)
     parser.add_argument("--child-b", type=Path, required=True)
@@ -93,21 +94,24 @@ def main():
     parser.add_argument("--mkfatimg", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    manifest = json.loads(args.manifest.read_text())
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    lock = json.loads(args.lock.read_text(encoding="utf-8"))
     # Require the exact launcher/ELF pair even though the launcher boots outside the card.
     build = {"launcher_sha256": sha256(args.launcher), "elf_sha256": sha256(args.elf)}
     args.output.mkdir(parents=True, exist_ok=False)
     tree = args.output / "card"
     identity = prepare_tree(args.repo, args.loader_archive,
-                            {"A": args.child_a, "B": args.child_b}, tree, manifest)
+                            {"A": args.child_a, "B": args.child_b}, tree, manifest,
+                            lock["loader"]["sha256"])
     image = args.output / "card.img"
     # -t truncates unused sectors for read-only volumes; persistence needs the full image.
     subprocess.run([str(args.mkfatimg), str(tree), str(image),
                     str(manifest["image_size_kib"])],
                    check=True, env=dict(os.environ, TZ="UTC"))
     identity.update(build)
+    identity["lock_sha256"] = sha256(args.lock)
     identity["image_sha256"] = sha256(image)
-    (args.output / "identity.json").write_text(json.dumps(identity, indent=2) + "\n")
+    (args.output / "identity.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

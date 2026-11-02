@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
 import zipfile
 
 
@@ -51,9 +50,8 @@ class FixtureTests(unittest.TestCase):
 
     def prepare(self, destination):
         digest = hashlib.sha256(self.archive.read_bytes()).hexdigest()
-        with patch.object(fixture, "LOADER_SHA256", digest):
-            return fixture.prepare_tree(self.repo, self.archive, self.children,
-                                        destination, self.manifest)
+        return fixture.prepare_tree(self.repo, self.archive, self.children,
+                                    destination, self.manifest, digest)
 
     def test_complete_tree_has_seeded_settings_assets_loader_and_expected_roms(self):
         tree = self.root / "card"
@@ -85,7 +83,7 @@ class FixtureTests(unittest.TestCase):
     def test_bad_archive_hash_fails_before_preparing_tree(self):
         with self.assertRaisesRegex(ValueError, "SHA-256"):
             fixture.prepare_tree(self.repo, self.archive, self.children,
-                                 self.root / "card", self.manifest)
+                                 self.root / "card", self.manifest, "0" * 64)
         self.assertFalse((self.root / "card").exists())
 
     def test_missing_loader_file_fails_before_preparing_tree(self):
