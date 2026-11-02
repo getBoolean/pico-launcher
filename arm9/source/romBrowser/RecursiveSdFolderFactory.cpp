@@ -127,7 +127,8 @@ std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
                 }
                 fileInfos[count++] = new FileInfo(sdFileInfo->fname, fileType,
                     FastFileRef(directory.GetFatFsDirectory(), sdFileInfo.get()),
-                    sdFileInfo->fattrib);
+                    sdFileInfo->fattrib,
+                    strcmp(current.path, ".") == 0 ? nullptr : current.path);
             }
         }
     }

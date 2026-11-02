@@ -293,6 +293,12 @@ void RomBrowserController::UpdateLastUsedFilepath()
     {
         _navigatePath[idx - 1] = 0;
     }
+    if (_triggerFileInfo.GetParentPath())
+    {
+        // File found by a subfolder search
+        strlcat(_navigatePath, _triggerFileInfo.GetParentPath(), sizeof(_navigatePath));
+        strlcat(_navigatePath, "/", sizeof(_navigatePath));
+    }
     strlcat(_navigatePath, _triggerFileInfo.GetFileName(), sizeof(_navigatePath));
     _appSettingsService->GetAppSettings().lastUsedFilePath = _navigatePath;
     _appSettingsService->Save();
