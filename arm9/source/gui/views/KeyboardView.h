@@ -8,10 +8,10 @@ class IVramManager;
 
 class alignas(32) KeyboardView : public View
 {
+    SHARED_ONLY(KeyboardView)
+
 public:
     typedef void (*key_callback_t)(char key, void* context);
-
-    KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader);
 
     void InitVram(const VramContext& vramContext) override;
     void Update() override;
@@ -19,7 +19,8 @@ public:
     void VBlank() override;
 
     bool HandleInput(const InputProvider& inputProvider, FocusManager& focusManager) override;
-    View* MoveFocus(View* currentFocus, FocusMoveDirection direction, View* source) override;
+    SharedPtr<View> MoveFocus(const SharedPtr<View>& currentFocus,
+        FocusMoveDirection direction, View* source) override;
 
     Rectangle GetBounds() const override
     {
@@ -69,7 +70,7 @@ private:
     u32 _texVramOffset = 0;
     u32 _tileBufferSize = 0;
     std::unique_ptr<u8[]> _tileBuffer;
-    u32 _highlightVramOffset = 0;
+    KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader);
 
     void RenderKeyboard();
     char GetKeyAt(int row, int col) const;

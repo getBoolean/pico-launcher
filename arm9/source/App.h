@@ -118,6 +118,7 @@ private:
     void HandleHideSearchTrigger();
     void HandleNavigateTrigger();
     void HandleFolderLoadDoneTrigger();
+    void RecreateRomBrowserTopScreenView();
     void HandleChangeDisplayModeTrigger(RomBrowserState newState);
 
     void MainLoop();

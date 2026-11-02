@@ -11,25 +11,25 @@ class VBlankTextureLoader;
 
 class SearchBottomSheetView : public BottomSheetView
 {
-public:
-    SearchBottomSheetView(IRomBrowserController* controller,
-        const MaterialColorScheme* materialColorScheme,
-        const IFontRepository* fontRepository,
-        VBlankTextureLoader* vblankTextureLoader);
+    SHARED_ONLY(SearchBottomSheetView)
 
+public:
     void InitVram(const VramContext& vramContext) override;
     void Update() override;
     void Draw(GraphicsContext& graphicsContext) override;
-    void VBlank() override;
     bool HandleInput(const InputProvider& inputProvider, FocusManager& focusManager) override;
-    View* MoveFocus(View* currentFocus, FocusMoveDirection direction, View* source) override;
+    SharedPtr<View> MoveFocus(const SharedPtr<View>& currentFocus,
+        FocusMoveDirection direction, View* source) override;
 
     void Focus(FocusManager& focusManager) override
     {
-        focusManager.Focus(&_keyboardView);
+        focusManager.Focus(_keyboardView);
     }
 
     void SetGraphics(const IconButton2DView::VramToken& iconButtonVramToken);
+
+protected:
+    void Close() override;
 
 private:
     static constexpr u32 MAX_TEXT_LENGTH = 32;
@@ -37,13 +37,18 @@ private:
     IRomBrowserController* _controller;
     const MaterialColorScheme* _materialColorScheme;
 
-    Label2DView _titleLabel;
-    Label2DView _queryLabel;
-    KeyboardView _keyboardView;
-    IconButton2DView _subFolderToggle;
+    SharedPtr<Label2DView> _titleLabel;
+    SharedPtr<Label2DView> _queryLabel;
+    SharedPtr<KeyboardView> _keyboardView;
+    SharedPtr<IconButton2DView> _subFolderToggle;
 
     char _text[MAX_TEXT_LENGTH] {};
     bool _includeSubFolders = false;
+
+    SearchBottomSheetView(IRomBrowserController* controller,
+        const MaterialColorScheme* materialColorScheme,
+        const IFontRepository* fontRepository,
+        VBlankTextureLoader* vblankTextureLoader);
 
     static void OnKeyPress(char key, void* context);
     void HandleKeyPress(char key);

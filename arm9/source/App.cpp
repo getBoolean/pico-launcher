@@ -340,7 +340,7 @@ void App::HandleHideDisplaySettingsTrigger()
 
 void App::HandleShowSearchTrigger()
 {
-    auto searchDialog = std::make_unique<SearchBottomSheetView>(
+    auto searchDialog = SearchBottomSheetView::CreateShared(
         &_romBrowserController, &_theme->GetMaterialColorScheme(),
         _theme->GetFontRepository(), &_vblankTextureLoader);
     searchDialog->SetGraphics(_iconButtonViewVram);
@@ -362,6 +362,13 @@ void App::HandleNavigateTrigger()
 
 void App::HandleFolderLoadDoneTrigger()
 {
+    RecreateRomBrowserTopScreenView();
+    if (!_focusManager.GetCurrentFocus())
+        _romBrowserBottomScreenView->Focus(_focusManager);
+}
+
+void App::RecreateRomBrowserTopScreenView()
+{
     _romBrowserTopScreenView.Reset();
     RestoreVramState(_vramStateAfterMakeBottomScreenView);
     auto displayMode = RomBrowserDisplayModeFactory().GetRomBrowserDisplayMode(
@@ -373,8 +380,6 @@ void App::HandleFolderLoadDoneTrigger()
         _theme->GetRomBrowserViewFactory());
     _romBrowserTopScreenView->InitVram(_subVramContext);
     _romBrowserBottomScreenView->RomBrowserViewModelInvalidated(_mainVramContext);
-    if (!_focusManager.GetCurrentFocus())
-        _romBrowserBottomScreenView->Focus(_focusManager);
 }
 
 void App::HandleChangeDisplayModeTrigger(RomBrowserState newState)
@@ -414,17 +419,7 @@ void App::Update()
     }
     if (_romBrowserController.ConsumeSearchResultsUpdated())
     {
-        _romBrowserTopScreenView.reset();
-        RestoreVramState(_vramStateAfterMakeBottomScreenView);
-        auto displayMode = RomBrowserDisplayModeFactory().GetRomBrowserDisplayMode(
-            _romBrowserController.GetRomBrowserDisplaySettings().layout);
-        _romBrowserTopScreenView = std::make_unique<RomBrowserTopScreenView>(
-            _romBrowserController.GetRomBrowserViewModel(),
-            displayMode,
-            _materialThemeFileIconFactory.get(),
-            _theme->GetRomBrowserViewFactory());
-        _romBrowserTopScreenView->InitVram(_subVramContext);
-        _romBrowserBottomScreenView->RomBrowserViewModelInvalidated(_mainVramContext);
+        RecreateRomBrowserTopScreenView();
     }
     if (stateMachine.HasStateChanged())
     {

@@ -182,13 +182,14 @@ bool KeyboardView::HandleInput(const InputProvider& inputProvider, FocusManager&
     return View::HandleInput(inputProvider, focusManager);
 }
 
-View* KeyboardView::MoveFocus(View* currentFocus, FocusMoveDirection direction, View* source)
+SharedPtr<View> KeyboardView::MoveFocus(const SharedPtr<View>& currentFocus,
+    FocusMoveDirection direction, View* source)
 {
-    if (currentFocus != this)
+    if (currentFocus.GetPointer() != this)
     {
         if (source == GetParent())
         {
-            return this;
+            return SharedFromThis();
         }
         return nullptr;
     }
@@ -199,32 +200,32 @@ View* KeyboardView::MoveFocus(View* currentFocus, FocusMoveDirection direction, 
             _focusCol--;
             if (_focusCol < 0)
                 _focusCol = sRowLengths[_focusRow] - 1;
-            return this;
+            return SharedFromThis();
         case FocusMoveDirection::Right:
             _focusCol++;
             if (_focusCol >= sRowLengths[_focusRow])
                 _focusCol = 0;
-            return this;
+            return SharedFromThis();
         case FocusMoveDirection::Up:
             if (_focusRow > 0)
             {
                 _focusRow--;
                 ClampCol();
-                return this;
+                return SharedFromThis();
             }
             // Propagate up to parent for navigation out of keyboard
             if (GetParent() && GetParent() != source)
-                return GetParent()->MoveFocus(this, direction, this);
+                return GetParent()->MoveFocus(currentFocus, direction, this);
             return nullptr;
         case FocusMoveDirection::Down:
             if (_focusRow < ROW_COUNT - 1)
             {
                 _focusRow++;
                 ClampCol();
-                return this;
+                return SharedFromThis();
             }
             if (GetParent() && GetParent() != source)
-                return GetParent()->MoveFocus(this, direction, this);
+                return GetParent()->MoveFocus(currentFocus, direction, this);
             return nullptr;
     }
     return nullptr;

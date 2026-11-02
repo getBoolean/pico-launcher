@@ -1,6 +1,7 @@
 #include "common.h"
 #include <string.h>
 #include <ctype.h>
+#include "core/StringUtil.h"
 #include "fat/Directory.h"
 #include "FileInfo.h"
 #include "RecursiveSdFolderFactory.h"

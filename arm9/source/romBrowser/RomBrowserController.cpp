@@ -96,7 +96,7 @@ void RomBrowserController::ApplySearch(const char* query, bool includeSubFolders
     {
         _romBrowserViewModel.Reset();
         const char* sq = _searchQuery[0] ? _searchQuery : nullptr;
-        _romBrowserViewModel = SharedPtr(new RomBrowserViewModel(this, nullptr, sq));
+        _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this, nullptr, sq);
         _searchResultsUpdated = true;
     }
 }
@@ -155,7 +155,7 @@ void RomBrowserController::Update()
                 _searchTask.Dispose();
                 _romBrowserViewModel.Reset();
                 _sdFolder = std::move(_newSdFolder);
-                _romBrowserViewModel = SharedPtr(new RomBrowserViewModel(this));
+                _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this);
                 _searchResultsUpdated = true;
             }
             break;

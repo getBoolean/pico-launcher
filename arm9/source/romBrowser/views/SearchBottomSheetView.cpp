@@ -26,29 +26,29 @@ SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     VBlankTextureLoader* vblankTextureLoader)
     : _controller(controller)
     , _materialColorScheme(materialColorScheme)
-    , _titleLabel(128, 16, 25, fontRepository->GetFont(FontType::Medium11))
-    , _queryLabel(176, 14, MAX_TEXT_LENGTH + 1, fontRepository->GetFont(FontType::Regular10))
-    , _keyboardView(fontRepository->GetFont(FontType::Regular10), vblankTextureLoader)
-    , _subFolderToggle(
+    , _titleLabel(Label2DView::CreateShared(128, 16, 25, fontRepository->GetFont(FontType::Medium11)))
+    , _queryLabel(Label2DView::CreateShared(176, 14, MAX_TEXT_LENGTH + 1, fontRepository->GetFont(FontType::Regular10)))
+    , _keyboardView(KeyboardView::CreateShared(fontRepository->GetFont(FontType::Regular10), vblankTextureLoader))
+    , _subFolderToggle(IconButton2DView::CreateShared(
         IconButtonView::Type::Tonal,
         IconButtonView::State::ToggleUnselected,
         md::sys::color::surfaceContainerLow,
-        materialColorScheme)
+        materialColorScheme))
 {
     _text[0] = 0;
-    _titleLabel.SetText(u"Search");
-    AddChildTail(&_titleLabel);
-    AddChildTail(&_queryLabel);
-    AddChildTail(&_keyboardView);
-    AddChildTail(&_subFolderToggle);
+    _titleLabel->SetText(u"Search");
+    AddChildTail(_titleLabel.GetPointer());
+    AddChildTail(_queryLabel.GetPointer());
+    AddChildTail(_keyboardView.GetPointer());
+    AddChildTail(_subFolderToggle.GetPointer());
 
-    _keyboardView.SetOnKeyPress(&SearchBottomSheetView::OnKeyPress, this);
+    _keyboardView->SetOnKeyPress(&SearchBottomSheetView::OnKeyPress, this);
 
-    _subFolderToggle.SetAction([] (IconButtonView* sender, void* arg)
+    _subFolderToggle->SetAction([] (IconButtonView* sender, void* arg)
     {
         auto self = static_cast<SearchBottomSheetView*>(arg);
         self->_includeSubFolders = !self->_includeSubFolders;
-        self->_subFolderToggle.SetState(self->_includeSubFolders
+        self->_subFolderToggle->SetState(self->_includeSubFolders
             ? IconButtonView::State::ToggleSelected
             : IconButtonView::State::ToggleUnselected);
         self->ApplySearch();
@@ -101,11 +101,11 @@ void SearchBottomSheetView::UpdateQueryLabel()
         memcpy(display, _text, len);
         display[len] = '_';
         display[len + 1] = 0;
-        _queryLabel.SetText(display);
+        _queryLabel->SetText(display);
     }
     else
     {
-        _queryLabel.SetText("_");
+        _queryLabel->SetText("_");
     }
 }
 
@@ -121,7 +121,7 @@ void SearchBottomSheetView::InitVram(const VramContext& vramContext)
     const auto objVramManager = vramContext.GetObjVramManager();
     if (objVramManager)
     {
-        _subFolderToggle.SetIconVramOffset(
+        _subFolderToggle->SetIconVramOffset(
             LoadIcon(*objVramManager, folderIconTiles, folderIconTilesLen));
     }
 }
@@ -130,10 +130,10 @@ void SearchBottomSheetView::Update()
 {
     BottomSheetView::Update();
 
-    _titleLabel.SetPosition(TITLE_LABEL_X, _position.y + TITLE_LABEL_Y);
-    _queryLabel.SetPosition(QUERY_LABEL_X, _position.y + QUERY_LABEL_Y);
-    _keyboardView.SetPosition(KEYBOARD_X, _position.y + KEYBOARD_Y);
-    _subFolderToggle.SetPosition(TOGGLE_X, _position.y + TOGGLE_Y_OFFSET);
+    _titleLabel->SetPosition(TITLE_LABEL_X, _position.y + TITLE_LABEL_Y);
+    _queryLabel->SetPosition(QUERY_LABEL_X, _position.y + QUERY_LABEL_Y);
+    _keyboardView->SetPosition(KEYBOARD_X, _position.y + KEYBOARD_Y);
+    _subFolderToggle->SetPosition(TOGGLE_X, _position.y + TOGGLE_Y_OFFSET);
 }
 
 void SearchBottomSheetView::Draw(GraphicsContext& graphicsContext)
@@ -141,16 +141,14 @@ void SearchBottomSheetView::Draw(GraphicsContext& graphicsContext)
     graphicsContext.SetClipArea(GetBounds());
     u32 oldPrio = graphicsContext.SetPriority(1);
     {
-        _titleLabel.SetBackgroundColor(
-            _materialColorScheme->GetColor(md::sys::color::surfaceContainerLow));
-        _titleLabel.SetForegroundColor(_materialColorScheme->onSurface);
-        _queryLabel.SetBackgroundColor(
-            _materialColorScheme->GetColor(md::sys::color::surfaceContainerLow));
-        _queryLabel.SetForegroundColor(_materialColorScheme->onSurface);
-        _keyboardView.SetBackgroundColor(
-            _materialColorScheme->GetColor(md::sys::color::surfaceContainerLow));
-        _keyboardView.SetForegroundColor(_materialColorScheme->onSurface);
-        _keyboardView.SetHighlightColor(
+        auto background = _materialColorScheme->GetColor(md::sys::color::surfaceContainerLow);
+        _titleLabel->SetBackgroundColor(background);
+        _titleLabel->SetForegroundColor(_materialColorScheme->onSurface);
+        _queryLabel->SetBackgroundColor(background);
+        _queryLabel->SetForegroundColor(_materialColorScheme->onSurface);
+        _keyboardView->SetBackgroundColor(background);
+        _keyboardView->SetForegroundColor(_materialColorScheme->onSurface);
+        _keyboardView->SetHighlightColor(
             _materialColorScheme->GetColor(md::sys::color::secondaryContainer));
         BottomSheetView::Draw(graphicsContext);
     }
@@ -158,50 +156,40 @@ void SearchBottomSheetView::Draw(GraphicsContext& graphicsContext)
     graphicsContext.ResetClipArea();
 }
 
-void SearchBottomSheetView::VBlank()
-{
-    BottomSheetView::VBlank();
-}
-
 bool SearchBottomSheetView::HandleInput(
     const InputProvider& inputProvider, FocusManager& focusManager)
 {
     if (inputProvider.Triggered(InputKey::B))
     {
-        _controller->HideSearch();
+        Close();
         return true;
     }
     return false;
 }
 
-View* SearchBottomSheetView::MoveFocus(
-    View* currentFocus, FocusMoveDirection direction, View* source)
+SharedPtr<View> SearchBottomSheetView::MoveFocus(const SharedPtr<View>& currentFocus,
+    FocusMoveDirection direction, View* source)
 {
-    // Navigate between keyboard and toggle
-    if (currentFocus == &_subFolderToggle)
+    if (currentFocus.GetPointer() == _subFolderToggle.GetPointer())
     {
-        if (direction == FocusMoveDirection::Left || direction == FocusMoveDirection::Up)
-            return &_keyboardView;
+        if (direction == FocusMoveDirection::Left || direction == FocusMoveDirection::Down)
+            return _keyboardView;
         return nullptr;
     }
 
-    if (currentFocus == &_keyboardView)
+    if (currentFocus.GetPointer() == _keyboardView.GetPointer())
     {
-        // If keyboard wants to propagate right from the rightmost col, go to toggle
+        // Leave the keyboard to the right from the rightmost column
         if (direction == FocusMoveDirection::Right &&
-            _keyboardView.GetFocusedCol() >= 9)
+            _keyboardView->GetFocusedCol() >= 9)
         {
-            return &_subFolderToggle;
+            return _subFolderToggle;
         }
-        return _keyboardView.MoveFocus(currentFocus, direction, this);
-    }
-
-    if (source == &_keyboardView)
-    {
-        // Keyboard propagated focus movement to us
-        if (direction == FocusMoveDirection::Right)
-            return &_subFolderToggle;
-        return nullptr;
+        auto newFocus = _keyboardView->MoveFocus(currentFocus, direction, this);
+        // Moving up from the top row goes to the toggle, which sits above the keyboard
+        if (!newFocus && direction == FocusMoveDirection::Up)
+            return _subFolderToggle;
+        return newFocus;
     }
 
     return nullptr;
@@ -210,7 +198,12 @@ View* SearchBottomSheetView::MoveFocus(
 void SearchBottomSheetView::SetGraphics(
     const IconButton2DView::VramToken& iconButtonVramToken)
 {
-    _subFolderToggle.SetGraphics(iconButtonVramToken);
+    _subFolderToggle->SetGraphics(iconButtonVramToken);
+}
+
+void SearchBottomSheetView::Close()
+{
+    _controller->HideSearch();
 }
 
 u32 SearchBottomSheetView::LoadIcon(IVramManager& vramManager,
