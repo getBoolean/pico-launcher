@@ -37,10 +37,15 @@ public:
     void ApplySearch(const char* query, bool includeSubFolders) override;
     bool ConsumeSearchResultsUpdated();
     const char* GetSearchQuery() const override { return _searchQuery; }
+    void ClearSearch() override;
+    bool IsSearchActive() const override { return _searchQuery[0] != 0; }
 
     void Update() override;
 
-    const SdFolder& GetSdFolder() const override { return *_sdFolder; }
+    const SdFolder& GetSdFolder() const override
+    {
+        return _searchResultFolder ? *_searchResultFolder : *_sdFolder;
+    }
 
     const RomBrowserStateMachine& GetStateMachine() const override { return _stateMachine; }
 
@@ -79,7 +84,9 @@ private:
     char _searchQuery[32] {};
     bool _searchIncludeSubFolders = false;
     bool _searchResultsUpdated = false;
-    QueueTask<void> _searchTask;
+    /// @brief Subfolder search results; shown instead of _sdFolder when set.
+    SharedPtr<SdFolder> _searchResultFolder;
+    QueueTask<SharedPtr<SdFolder>> _searchTask;
     std::unique_ptr<CoverRepository> _coverRepository;
     std::unique_ptr<IconRepository> _iconRepository;
     std::unique_ptr<BannerRepository> _bannerRepository;
@@ -95,4 +102,6 @@ private:
     void UpdateLastUsedFilepath();
     void SetPicoLoaderParams() const;
     void LoadCheats() const;
+    void CancelSearchTask();
+    void RecreateRomBrowserViewModel(const char* initialSelectedFileName = nullptr);
 };

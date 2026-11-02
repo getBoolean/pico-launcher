@@ -80,25 +80,66 @@ void RomBrowserController::HideSearch()
 
 void RomBrowserController::ApplySearch(const char* query, bool includeSubFolders)
 {
+    // Cancel before changing _searchQuery, which a running search reads.
+    // A canceled search's results are discarded, so it doesn't matter what it reads.
+    CancelSearchTask();
+
+    if (!query[0])
+    {
+        _searchIncludeSubFolders = includeSubFolders;
+        ClearSearch();
+        return;
+    }
+
     StringUtil::Copy(_searchQuery, query, sizeof(_searchQuery));
     _searchIncludeSubFolders = includeSubFolders;
 
-    if (includeSubFolders && _searchQuery[0])
+    if (includeSubFolders)
     {
+        // The current results stay visible until the new search completes
         _searchTask = _ioTaskQueue->Enqueue([this] (const vu8& cancelRequested)
         {
             RecursiveSdFolderFactory factory { &_fileTypeProvider };
-            _newSdFolder = factory.CreateFromPathRecursive(".", _searchQuery);
-            return TaskResult<void>::Completed();
+            auto result = factory.CreateFromPathRecursive(".", _searchQuery, cancelRequested);
+            if (!result)
+                return TaskResult<SharedPtr<SdFolder>>::Canceled();
+            return TaskResult<SharedPtr<SdFolder>>::Completed(result);
         });
     }
     else
     {
         _romBrowserViewModel.Reset();
-        const char* sq = _searchQuery[0] ? _searchQuery : nullptr;
-        _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this, nullptr, sq);
+        _searchResultFolder.Reset();
+        RecreateRomBrowserViewModel();
         _searchResultsUpdated = true;
     }
+}
+
+void RomBrowserController::ClearSearch()
+{
+    CancelSearchTask();
+    if (!_searchQuery[0] && !_searchResultFolder)
+        return;
+
+    _searchQuery[0] = 0;
+    _romBrowserViewModel.Reset();
+    _searchResultFolder.Reset();
+    RecreateRomBrowserViewModel();
+    _searchResultsUpdated = true;
+}
+
+void RomBrowserController::CancelSearchTask()
+{
+    // A running task stops early when canceled, and its task queue destroys it,
+    // together with its result, once it completes.
+    _searchTask.CancelTask();
+}
+
+void RomBrowserController::RecreateRomBrowserViewModel(const char* initialSelectedFileName)
+{
+    const char* searchQuery = _searchQuery[0] ? _searchQuery : nullptr;
+    _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(
+        this, initialSelectedFileName, searchQuery);
 }
 
 bool RomBrowserController::ConsumeSearchResultsUpdated()
@@ -148,23 +189,24 @@ void RomBrowserController::Update()
             }
             break;
         }
-        case RomBrowserState::Search:
-        {
-            if (_searchTask.IsValid() && _searchTask.GetTask().IsCompletedSuccessfully())
-            {
-                _searchTask.Dispose();
-                _romBrowserViewModel.Reset();
-                _sdFolder = std::move(_newSdFolder);
-                _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this);
-                _searchResultsUpdated = true;
-            }
-            break;
-        }
         case RomBrowserState::Launching:
         default:
         {
             break;
         }
+    }
+
+    // Subfolder search results also arrive after the search sheet was closed
+    if (_searchTask.IsValid() && _searchTask.GetTask().IsCompleted())
+    {
+        if (_searchTask.GetTask().IsCompletedSuccessfully())
+        {
+            _romBrowserViewModel.Reset();
+            _searchResultFolder = _searchTask.GetTask().GetResult();
+            RecreateRomBrowserViewModel();
+            _searchResultsUpdated = true;
+        }
+        _searchTask.Dispose();
     }
 }
 
@@ -200,9 +242,12 @@ void RomBrowserController::HandleTrigger()
 void RomBrowserController::HandleNavigateTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::Navigate\n");
+    // Opening or leaving a folder ends the search. The subfolder results are
+    // dropped once the folder is loaded, as the view model still uses them.
+    CancelSearchTask();
     _searchQuery[0] = 0;
     _searchIncludeSubFolders = false;
-    _navigateTask = _ioTaskQueue->Enqueue([this] (const vu8& cancelRequested)
+    _navigateTask =_ioTaskQueue->Enqueue([this] (const vu8& cancelRequested)
     {
         if (!_coverRepository)
         {
@@ -257,8 +302,9 @@ void RomBrowserController::HandleFolderLoadDoneTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::FolderLoadDone\n");
     _romBrowserViewModel.Reset();
+    _searchResultFolder.Reset();
     _sdFolder = std::move(_newSdFolder);
-    _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this, _navigateFileName);
+    RecreateRomBrowserViewModel(_navigateFileName);
 }
 
 void RomBrowserController::HandleLaunchTrigger()
@@ -276,8 +322,7 @@ void RomBrowserController::HandleLaunchTrigger()
 void RomBrowserController::HandleChangeDisplayModeTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::ChangeDisplayMode\n");
-    const char* sq = _searchQuery[0] ? _searchQuery : nullptr;
-    _romBrowserViewModel = SharedPtr<RomBrowserViewModel>::MakeShared(this, nullptr, sq);
+    RecreateRomBrowserViewModel();
 }
 
 void RomBrowserController::HandleGotoSettingsScreenTrigger()

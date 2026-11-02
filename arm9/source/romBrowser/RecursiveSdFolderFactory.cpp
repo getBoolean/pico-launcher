@@ -25,8 +25,8 @@ static bool CaseInsensitiveContains(const char* haystack, const char* needle)
     return false;
 }
 
-std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
-    const char* basePath, const char* searchQuery) const
+SharedPtr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
+    const char* basePath, const char* searchQuery, const vu8& cancelRequested) const
 {
     TCHAR savedCwd[256];
     f_getcwd(savedCwd, sizeof(savedCwd) / sizeof(savedCwd[0]));
@@ -35,7 +35,7 @@ std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
     {
         f_chdir(savedCwd);
         auto empty = (FileInfo**)malloc(sizeof(FileInfo*) * 1);
-        return std::make_unique<SdFolder>(empty, 0);
+        return SharedPtr<SdFolder>::MakeShared(empty, 0);
     }
 
     int count = 0;
@@ -61,7 +61,8 @@ std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
 
     auto sdFileInfo = std::make_unique<FILINFO>();
 
-    while (stackSize > 0 && count < MAX_RESULTS)
+    bool canceled = false;
+    while (!canceled && stackSize > 0 && count < MAX_RESULTS)
     {
         // Pop
         stackSize--;
@@ -73,6 +74,12 @@ std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
 
         while (count < MAX_RESULTS)
         {
+            if (cancelRequested)
+            {
+                canceled = true;
+                break;
+            }
+
             if (directory.Read(sdFileInfo.get()) != FR_OK)
                 break;
 
@@ -136,5 +143,9 @@ std::unique_ptr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
     free(stack);
     f_chdir(savedCwd);
 
-    return std::make_unique<SdFolder>(fileInfos, count);
+    // Constructing the folder first ensures the found files are freed when canceled
+    auto result = SharedPtr<SdFolder>::MakeShared(fileInfos, count);
+    if (canceled)
+        return nullptr;
+    return result;
 }

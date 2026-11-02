@@ -50,12 +50,12 @@ public:
     const T& GetResult() const { return this->_result; }
 
 protected:
-    virtual TaskResult<T> ExecuteFunc() const = 0;
+    virtual TaskResult<T> ExecuteFunc() = 0;
 
 private:
     T _result;
 
-    TaskState ExecuteDirect()
+    TaskState ExecuteDirect() override
     {
         auto result = ExecuteFunc();
         if (result.GetFinalState() == TaskState::Completed)

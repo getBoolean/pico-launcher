@@ -30,6 +30,8 @@ public:
     virtual void HideSearch() = 0;
     virtual void ApplySearch(const char* query, bool includeSubFolders) = 0;
     virtual const char* GetSearchQuery() const = 0;
+    virtual void ClearSearch() = 0;
+    virtual bool IsSearchActive() const = 0;
 
     virtual void Update() = 0;
 
