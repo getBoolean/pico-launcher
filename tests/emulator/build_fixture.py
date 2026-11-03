@@ -53,6 +53,20 @@ def prepare_tree(repo, loader_archive, children, destination, manifest, loader_s
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(children[rom["child"]], target)
 
+    ranking = manifest["ranking"]
+    approximate = destination / 'games/stress/aaa-cap'
+    approximate.mkdir(parents=True)
+    for index in range(ranking['approximate_count']):
+        shutil.copyfile(children[ranking['child']], approximate / f'cpa-{index:03}.nds')
+    literal = destination / 'games/stress/zzz-cap'
+    literal.mkdir()
+    shutil.copyfile(children[ranking['child']], literal / 'cap-exact.nds')
+    long_path = destination / 'games/stress/longpath'
+    for index in range(manifest['long_path']['depth']):
+        long_path /= f'path_segment_{index:02}_' + 'x' * manifest['long_path']['padding']
+    long_path.mkdir(parents=True)
+    shutil.copyfile(children['A'], long_path / 'x.nds')
+
     # Empty directories extend traversal without hitting the result-count cap.
     def stress(parent, depth):
         if not depth:

@@ -12,6 +12,10 @@ class OracleError(RuntimeError):
     pass
 
 
+class ViewModelPending(OracleError):
+    """A frozen CPU boundary interrupted view-model replacement."""
+
+
 class _MissingMember(OracleError, KeyError):
     pass
 
@@ -59,7 +63,7 @@ class _Dwarf:
         wanted = {'ProcessManager', 'App', 'RomBrowserController', 'RomBrowserViewModel',
                   'FileInfoManager', 'FileInfo', 'TaskBase', 'QueueTaskBase', 'SharedPtrBase',
                   'InputProvider', 'InputRepeater', 'RomBrowserStateMachine', 'TaskState',
-                  'InputKey', 'RomBrowserState'}
+                  'InputKey', 'RomBrowserState', 'SearchBottomSheetView', 'LabelView', 'Label2DView'}
         self.types = {}
         for cu in dwarf.iter_CUs():
             for die in cu.iter_DIEs():
@@ -180,8 +184,10 @@ def build_descriptor(elf_path, rom_path, identity):
                 ('process_app', 'ProcessManager', ('_curProcess',), True, False),
                 ('app_controller', 'App', ('_romBrowserController',), False, False),
                 ('app_keys', 'App', ('_inputRepeater', '_triggeredKeys'), False, False),
+                ('app_dialog', 'App', ('_dialogPresenter', '_currentDialog'), False, True),
                 ('controller_query', 'RomBrowserController', ('_searchQuery',), False, False),
                 ('controller_recursive', 'RomBrowserController', ('_searchIncludeSubFolders',), False, False),
+                ('controller_path', 'RomBrowserController', ('_currentFolderPath',), True, False),
                 ('controller_vm', 'RomBrowserController', ('_romBrowserViewModel',), False, True),
                 ('controller_state', 'RomBrowserController', ('_stateMachine', '_curState'), False, False),
                 ('controller_task', 'RomBrowserController', ('_searchTask', '_task'), True, False),
@@ -192,6 +198,12 @@ def build_descriptor(elf_path, rom_path, identity):
                 ('manager_count', 'FileInfoManager', ('_itemCount',), False, False),
                 ('file_name', 'FileInfo', ('_name',), True, False),
                 ('file_parent', 'FileInfo', ('_parentPath',), True, False),
+                ('search_path_label', 'SearchBottomSheetView', ('_pathLabel',), False, True),
+                ('label_text', 'Label2DView', ('_textBuffer',), True, False),
+                ('label_capacity', 'Label2DView', ('_maxStringLength',), False, False),
+                ('label_marquee_offset', 'Label2DView', ('_marqueeOffset',), False, False),
+                ('label_string_width', 'Label2DView', ('_newStringWidth',), False, False),
+                ('label_width', 'Label2DView', ('_width',), False, False),
                 ('task_state', 'TaskBase', ('_state',), False, False),
                 ('task_query', 'SearchFuncTask', ('_function', '__queryCopy'), False, True),
             ):
@@ -221,6 +233,7 @@ def build_descriptor(elf_path, rom_path, identity):
                      for name in ('TaskState', 'RomBrowserState', 'InputKey')}
             handlers = {label: symbols[name]['st_value'] for label, name in (
                 ('search_input', '_ZN21SearchBottomSheetView11HandleInputERK13InputProviderR12FocusManager'),
+                ('change_display', '_ZN20RomBrowserController30HandleChangeDisplayModeTriggerEv'),
                 ('apply_search', '_ZN20RomBrowserController11ApplySearchEPKcb'))}
             return Descriptor(symbols['gProcessManager']['st_value'], vptr(symbols['_ZTV3App']),
                               vptr(tasks[0]), fields, enums, handlers, identity)
@@ -266,6 +279,8 @@ async def read_browser_state(descriptor, read, *, frozen):
         raise OracleError('Current process is not the matching App')
     controller = app + descriptor.fields['app_controller'].offset
     vm = await value(controller, 'controller_vm')
+    if not vm:
+        raise ViewModelPending('Browser view model is being rebuilt')
     manager = await value(vm, 'viewmodel_manager')
     count = await value(manager, 'manager_count')
     if count > 4096:
@@ -295,11 +310,35 @@ async def read_browser_state(descriptor, read, *, frozen):
                 'query_address': query_address,
                 'query': await string(query_address + task_query.offset, task_query.size),
                 'state': enum('TaskState', await value(task_address, 'task_state'))}
+    folder_path = await value(controller, 'controller_path')
+    folder_path = await string(folder_path, 0x02400000 - folder_path) if folder_path else None
+    browser_state = enum('RomBrowserState', await value(controller, 'controller_state'))
+    path_label = None
+    if browser_state == 'Search':
+        dialog = await value(app, 'app_dialog')
+        if dialog:
+            label = await value(dialog, 'search_path_label')
+            capacity = await value(label, 'label_capacity')
+            text_address = await value(label, 'label_text')
+            raw = await memory(text_address, (capacity + 1) * 2)
+            end = next((index for index in range(0, len(raw), 2)
+                        if raw[index:index + 2] == b'\0\0'), None)
+            if end is None:
+                raise OracleError('Unterminated UTF-16 path label')
+            try:
+                text = raw[:end].decode('utf-16-le')
+            except UnicodeDecodeError as error:
+                raise OracleError('Invalid UTF-16 path label') from error
+            path_label = {'text': text, 'capacity': capacity,
+                          'offset': await value(label, 'label_marquee_offset', signed=True),
+                          'string_width': await value(label, 'label_string_width'),
+                          'width': await value(label, 'label_width')}
     return {'app_address': app, 'controller_address': controller, 'query': query,
+            'folder_path': folder_path, 'path_label': path_label,
             'include_subfolders': bool(recursive), 'files': files,
             'paths': [(item['parent'].rstrip('/') + '/' if item['parent'] else '') + item['name'] for item in files],
             'count': count, 'selected_index': await value(vm, 'viewmodel_selected', signed=True),
-            'browser_state': enum('RomBrowserState', await value(controller, 'controller_state')),
+            'browser_state': browser_state,
             'triggered_keys': await value(app, 'app_keys'), 'task': task}
 
 

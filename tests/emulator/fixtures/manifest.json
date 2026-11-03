@@ -1,7 +1,7 @@
 {
   "format": 1,
   "timestamp": 1704067200,
-  "image_size_kib": 32768,
+  "image_size_kib": 65536,
   "loader_api": 3,
   "settings": {
     "language": "english",
@@ -22,9 +22,12 @@
     {"path": "games/space-dash one.nds", "child": "A", "marker": "PICO CHILD A"},
     {"path": "games/space-dash two.nds", "child": "B", "marker": "PICO CHILD B"},
     {"path": "games/alpha.nds", "child": "A", "marker": "PICO CHILD A"},
-    {"path": "games/A/nested one.nds", "child": "A", "marker": "PICO CHILD A"}
+    {"path": "games/A/nested one.nds", "child": "A", "marker": "PICO CHILD A"},
+    {"path": "games/stress/alhpa demo.nds", "child": "A", "marker": "PICO CHILD A"}
   ],
   "stress": {"breadth": 5, "depth": 4},
+  "ranking": {"approximate_count": 260, "child": "A"},
+  "long_path": {"depth": 9, "padding": 18},
   "search_expectations": [
     {"query": "space-dash ", "recursive": false, "paths": ["/games/space-dash one.nds", "/games/space-dash two.nds"]},
     {"query": "game", "recursive": true, "paths": ["/games/A/game.nds", "/games/B/game.nds"]},

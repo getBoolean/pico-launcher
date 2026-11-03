@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil
 import traceback
 
-from elf_state import build_descriptor, read_browser_state, require_inflight
+from elf_state import ViewModelPending, build_descriptor, read_browser_state, require_inflight
 from mcp_client import connect
 
 
@@ -86,14 +86,18 @@ class SearchCase:
     async def text(self, text):
         for char in text.upper():
             row = next(i for i, keys in enumerate(ROWS) if char in keys)
-            await self.touch(28 + OFFSETS[row] + ROWS[row].index(char) * 20, 91 + row * 18)
+            await self.touch(28 + OFFSETS[row] + ROWS[row].index(char) * 20, 97 + row * 18)
 
-    async def expect(self, query, paths, *, recursive=False, sheet='Search'):
+    async def expect(self, query, paths, *, recursive=False, sheet='Search', ordered=False, folder=None):
         state = await self.state()
         assert state['query'] == query, state
         assert state['include_subfolders'] == recursive, state
-        assert sorted(state['paths']) == sorted(paths), state
+        assert (state['paths'] == paths if ordered else sorted(state['paths']) == sorted(paths)), state
         assert state['browser_state'] == sheet, state
+        if folder is not None:
+            assert state['folder_path'] and state['folder_path'].split(':', 1)[-1] == folder, state
+            if sheet == 'Search':
+                assert state['path_label'] and state['path_label']['text'] == state['folder_path'], state
         if paths:
             assert 0 <= state['selected_index'] < len(paths), state
         else:
@@ -106,7 +110,13 @@ class SearchCase:
 
     async def settled(self, limit=3000):
         for elapsed in range(0, limit + 1, 20):
-            state = await self.state()
+            try:
+                state = await self.state()
+            except ViewModelPending:
+                if elapsed == limit:
+                    raise AssertionError('Browser view model did not finish rebuilding')
+                await self.step(20)
+                continue
             if state['task'] is None:
                 self.walk_measurements.append({'query': state['query'],
                     'settle_frames_lower_bound': max(0, elapsed - 20), 'settle_frames_upper_bound': elapsed})
@@ -117,7 +127,7 @@ class SearchCase:
         raise AssertionError(f'Recursive search did not settle within {limit} frames')
 
     async def begin_walk(self):
-        await self.touch(222, 76, after=1)
+        await self.key('x', after=1)
         for _ in range(8):
             state = await self.state()
             if state['include_subfolders'] and state['task']:
@@ -159,6 +169,87 @@ class SearchCase:
             for identity in ids:
                 await self.call('clear_breakpoint', id=identity)
         await self.step(8)
+
+    async def navigate(self, name):
+        state = await self.state()
+        assert state['browser_state'] == 'Browser', state
+        target = state['paths'].index(name)
+        await self.key('down')
+        # HorizontalGrid columns contain a fixed number of rows. Observe that
+        # count through real focus movement rather than assuming pixel geometry.
+        for _ in range(state['count']):
+            if (await self.state())['selected_index'] == 0:
+                break
+            before = (await self.state())['selected_index']
+            await self.key('left')
+            after = (await self.state())['selected_index']
+            if after == before:
+                await self.key('up')
+        assert (await self.state())['selected_index'] == 0
+        if target:
+            await self.key('right')
+            rows = (await self.state())['selected_index']
+            assert rows > 0, 'Grid column movement did not select a new item'
+            await self.key('left')
+            for _ in range(target // rows):
+                await self.key('right')
+            for _ in range(target % rows):
+                await self.key('down')
+        state = await self.state()
+        assert state['selected_index'] == target, state
+        await self.key('a', after=100)
+        state = await self.state()
+        assert state['browser_state'] == 'Browser' and state['query'] == '', state
+        assert not state['include_subfolders'], state
+
+    async def set_sort(self, descending, *, inflight=False, pending_paths=None):
+        await self.key('b', after=30)
+        await self.touch(240, 16, after=30)
+        state = await self.state()
+        assert state['browser_state'] == 'DisplaySettings', state
+        x = 118 if descending else 86
+        if inflight:
+            before = await self.state()
+            assert before['task'] and before['task']['state'] == 'Running', before
+            ids = []
+            try:
+                for handler in ('change_display', 'apply_search'):
+                    pc = self.descriptor.handlers[handler]
+                    bp = await self.call('set_breakpoint', kind='exec', memory_type='arm9',
+                                         start=pc, end=pc, pause_on_hit=True)
+                    ids.append(bp['id'])
+                await self.debug('hold_touch', x=x, y=118)
+                await self.step(self.press_frames)
+                await self.debug('release_touch')
+                for _ in range(12):
+                    await self.call('step', count=1)
+                    pc = (await self.call('get_state', cpu='arm9'))['state']['cpu.pc']
+                    if pc == self.descriptor.handlers['apply_search']:
+                        raise AssertionError('Search replaced before the display-change handler')
+                    if pc == self.descriptor.handlers['change_display']:
+                        boundary = await self.state()
+                        require_inflight(self.descriptor, before, boundary,
+                                         handler='change_display', pc=pc, replacement_entries=0)
+                        (self.output / 'inflight-sort.json').write_text(
+                            json.dumps({'before': before, 'boundary': boundary, 'pc': pc}, indent=2))
+                        break
+                else:
+                    raise AssertionError('Sort input did not reach the display-change handler')
+            finally:
+                await self.debug('release_touch')
+                for identity in ids:
+                    await self.call('clear_breakpoint', id=identity)
+            await self.step(8)
+        else:
+            await self.touch(x, 118, after=1)
+        if pending_paths is not None:
+            await self.step(8)
+            pending = await self.expect('CAP', pending_paths, recursive=True,
+                                        ordered=True, sheet='DisplaySettings')
+            assert pending['task'] and pending['task']['state'] == 'Running', pending
+            (self.output / 'pending-sort.json').write_text(json.dumps(pending, indent=2))
+        await self.key('b', after=30)
+        await self.touch(207, 16, after=30)
 
     async def inflight_touch(self, x, y, *, query, recursive):
         before = await self.state()
@@ -203,7 +294,7 @@ async def current_folder(case):
     await case.clear()
     await case.text('\b\b')
     await case.expect('', INITIAL)
-    await case.touch(222, 76)
+    await case.key('x')
     await case.expect('', INITIAL, recursive=True)
     await case.clear()
 
@@ -266,13 +357,13 @@ async def cancellation(case):
 async def replacement(case):
     await case.text('GAME')
     await case.begin_walk()
-    await case.inflight_touch(28, 109, query='GAMEQ', recursive=True)
+    await case.inflight_touch(28, 115, query='GAMEQ', recursive=True)
     await case.settled()
-    await case.expect('GAMEQ', [], recursive=True)
+    await case.expect('GAMEQ', ['A/game.nds', 'B/game.nds'], recursive=True)
     await case.clear()
     await case.text('ONE')
     await case.begin_walk()
-    await case.inflight_touch(222, 76, query='ONE', recursive=False)
+    await case.inflight_key('x', 'ONE')
     await case.expect('ONE', ['space-dash one.nds'])
     await case.step(600)
     await case.expect('ONE', ['space-dash one.nds'])
@@ -283,11 +374,138 @@ async def scope_hotkey(case):
     await case.expect('', INITIAL, recursive=True)
     await case.key('x')
     await case.expect('', INITIAL)
+    await case.debug('set_input', buttons=['x'])
+    try:
+        await case.step(60)
+        await case.expect('', INITIAL, recursive=True)
+    finally:
+        await case.debug('set_input', buttons=[])
+    await case.step(8)
+    # Choosing the on-screen X still types X, independently of physical X.
+    await case.touch(68, 151)
+    await case.settled()
+    await case.expect('X', ['stress/zzz-cap/cap-exact.nds'], recursive=True)
+    await case.key('x')
+    await case.expect('X', [])
+    await case.key('a')
+    await case.expect('XX', [])
+    await case.key('x')
+    await case.settled()
+    await case.expect('XX', [], recursive=True)
+    await case.text('\b\b')
+    await case.expect('', INITIAL, recursive=True)
+    await case.key('b', after=30)
+    await case.touch(207, 16, after=30)
+    await case.expect('', INITIAL, recursive=True)
+    await case.clear()
+    # Every keyboard edge stays inside the keyboard after removing the icon.
+    for keys, expected in ((('up',) * 4, '1'), (('left',), '0'),
+                           (('right',), '1'), (('down',) * 4, 'Z')):
+        for key in keys:
+            await case.key(key)
+        await case.key('a')
+        assert (await case.state())['query'] == expected
+        await case.clear()
+
+
+async def fuzzy(case):
+    await case.text('ALHPA')
+    await case.expect('ALHPA', ['alpha.nds'], ordered=True, folder='/games')
+    await case.begin_walk()
+    await case.settled()
+    await case.expect('ALHPA', ['stress/alhpa demo.nds', 'alpha.nds'], recursive=True, ordered=True)
+    await case.capture('literal-before-approximate')
+    await case.set_sort(True)
+    await case.settled()
+    await case.expect('ALHPA', ['stress/alhpa demo.nds', 'alpha.nds'], recursive=True, ordered=True)
+
+
+def cap_paths(descending=False):
+    approximate = [f'stress/aaa-cap/cpa-{index:03}.nds' for index in range(260)]
+    approximate.sort(reverse=descending)
+    return ['stress/zzz-cap/cap-exact.nds'] + approximate[:255]
+
+
+async def capped_ranking(case):
+    await case.text('CAP')
+    await case.begin_walk()
+    await case.settled()
+    await case.expect('CAP', cap_paths(), recursive=True, ordered=True)
+    await case.capture('late-literal-retained')
+    retained_descending = [cap_paths()[0]] + list(reversed(cap_paths()[1:]))
+    await case.set_sort(True, pending_paths=retained_descending)
+    await case.settled()
+    await case.expect('CAP', cap_paths(True), recursive=True, ordered=True)
+    # Restart a walk, then change its ordering before waiting for completion.
+    await case.key('x')
+    await case.begin_walk()
+    await case.set_sort(False, inflight=True)
+    await case.settled()
+    await case.expect('CAP', cap_paths(), recursive=True, ordered=True)
+
+
+LONG_COMPONENTS = [f'path_segment_{index:02}_' + 'x' * 18 for index in range(9)]
+
+
+async def folder_path(case):
+    await case.expect('', INITIAL, folder='/games')
+    await case.key('b', after=30)
+    await case.navigate('A')
+    await case.touch(207, 16, after=30)
+    await case.expect('', ['game.nds', 'nested one.nds'], folder='/games/A')
+    await case.capture('nested-folder')
+    await case.key('b', after=30)
+    await case.touch(16, 16, after=100)
+    await case.navigate('stress')
+    await case.navigate('longpath')
+    expected = '/games/stress/longpath'
+    for component in LONG_COMPONENTS:
+        await case.navigate(component)
+        expected += '/' + component
+    assert len(expected.encode()) > 255
+    await case.touch(207, 16, after=30)
+    await case.expect('', ['x.nds'], folder=expected)
+    await case.capture('long-path-start')
+    await case.step(600)
+    scrolling = await case.capture('long-path-scroll')
+    label = scrolling['path_label']
+    assert label['text'] == scrolling['folder_path'], scrolling
+    assert label['string_width'] > label['width'] and label['offset'] > 0, scrolling
+    await case.text('X')
+    await case.expect('X', ['x.nds'], folder=expected)
+    await case.key('x')
+    await case.settled()
+    edited = await case.expect('X', [], recursive=True, folder=expected)
+    assert edited['path_label']['offset'] >= label['offset'], edited
+    # The existing marquee advances one pixel every three frames, stopping one
+    # pixel beyond the final viewport. Reach that stop without cycling its wait.
+    end_offset = edited['path_label']['string_width'] - edited['path_label']['width'] + 1
+    frames = (end_offset - edited['path_label']['offset']) * 3
+    assert frames >= 0, edited
+    while frames:
+        count = min(frames, 600)
+        await case.step(count)
+        frames -= count
+    ending = await case.capture('long-path-end')
+    assert ending['path_label']['offset'] == end_offset, ending
+    assert ending['path_label']['text'] == ending['folder_path'], ending
+    await case.key('b', after=30)
+    await case.touch(207, 16, after=30)
+    await case.expect('X', [], recursive=True, folder=expected)
+    await case.key('y')
+    await case.key('b', after=30)
+    for _ in range(len(LONG_COMPONENTS) + 3):
+        await case.touch(16, 16, after=100)
+    await case.touch(207, 16, after=30)
+    state = await case.state()
+    assert state['folder_path'].split(':', 1)[-1] == '/', state
+    await case.capture('root-folder')
 
 
 CASES = {'current-folder': current_folder, 'empty-and-limit': empty_and_limit,
          'recursive': recursive, 'cancellation': cancellation, 'replacement': replacement,
-         'scope-hotkey': scope_hotkey}
+         'scope-hotkey': scope_hotkey, 'fuzzy': fuzzy, 'capped-ranking': capped_ranking,
+         'folder-path': folder_path}
 
 
 async def run(args):

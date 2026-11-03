@@ -28,11 +28,17 @@ starts each case from a fresh card. Inputs hold for six emulated frames by defau
 | recursive | Duplicate basenames retain distinct parents; current-folder and nested matches coexist |
 | cancellation | Original walk is Running at Y-clear and B-close input-handler entry; no stale results after clear; reopening preserves recursive search |
 | replacement | Original walk is Running at replacement/toggle-off ApplySearch entry; replaced results cannot reappear |
+| scope-hotkey | Held physical X toggles once, on-screen X types, scope lifecycle is preserved, and A types the expected character at keyboard edges |
+| fuzzy | Automatic typo matches and literal-first relevance in either name direction |
+| capped-ranking | Late literal survives the best-256 cap; sort feedback updates during replacement and the final set follows the selected direction |
+| folder-path | Actual root/nested/long paths, complete marquee text, preserved scroll progress, and exclusion of unlaunchable recursive paths |
 
 In-flight witnesses use the matching ELF and temporary breakpoints before cancellation or
 task disposal. The first ApplySearch after the snapshot is monitored; pointer reuse alone
 cannot pass. A case fails if no running task is witnessed. The bounded stress tree is sized
 for a useful input window without thousands of empty directories in every CI case.
+Settling may advance through an explicitly observed null view model during publication;
+other observer errors remain failures, and publication must finish within the frame bound.
 
 Each output contains the MCP trace, ROM/ELF/fixture identity, state assertions, screenshots
 and an exact-generation stop result. It also preserves the install manifest and hashes the

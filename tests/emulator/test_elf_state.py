@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 
-from elf_state import Descriptor, Field, OracleError, _Dwarf, _function_addresses, read_browser_state, require_inflight, verify_identity
+from elf_state import Descriptor, Field, OracleError, ViewModelPending, _Dwarf, _function_addresses, read_browser_state, require_inflight, verify_identity
 
 
 def fixture():
@@ -15,6 +15,11 @@ def fixture():
         ('controller_query', 0, 32), ('controller_recursive', 32, 1),
         ('controller_vm', 36, 4), ('controller_state', 40, 1),
         ('controller_task', 44, 4), ('controller_queue', 48, 4),
+        ('controller_path', 52, 4),
+        ('app_dialog', 160, 4), ('search_path_label', 0, 4),
+        ('label_text', 0, 4), ('label_capacity', 4, 4),
+        ('label_marquee_offset', 8, 4), ('label_string_width', 12, 4),
+        ('label_width', 16, 4),
         ('viewmodel_manager', 0, 4), ('viewmodel_selected', 4, 4),
         ('manager_items', 0, 4), ('manager_count', 4, 4),
         ('file_name', 0, 4), ('file_parent', 4, 4),
@@ -36,6 +41,17 @@ def fixture():
     put(0x02001048, 7, 1)
     put(0x0200104c, 0x02005000)
     put(0x02001050, 0x02007000)
+    put(0x02001054, 0x02006400)
+    data[0x6400:0x640b] = b'fat:/games\0'
+    put(0x020010a0, 0x02006800)
+    put(0x02006800, 0x02006900)
+    put(0x02006900, 0x02006c00)
+    put(0x02006904, 512)
+    put(0x02006908, 177)
+    put(0x0200690c, 2000)
+    put(0x02006910, 216)
+    label = 'fat:/games\0'.encode('utf-16-le')
+    data[0x6c00:0x6c00 + len(label)] = label
     put(0x02002000, 0x02003000)
     put(0x02002004, 0)
     put(0x02003000, 0x02004000)
@@ -58,6 +74,38 @@ def fixture():
 
 
 class OracleTests(unittest.TestCase):
+    def test_null_view_model_is_an_explicit_publication_boundary(self):
+        d, data, read = fixture()
+        struct.pack_into('<I', data, 0x1020 + d.fields['controller_vm'].offset, 0)
+        with self.assertRaises(ViewModelPending):
+            asyncio.run(read_browser_state(d, read, frozen=True))
+
+    def test_search_path_label_decodes_actual_utf16_text_and_marquee(self):
+        d, _, read = fixture()
+        state = asyncio.run(read_browser_state(d, read, frozen=True))
+        self.assertEqual(state['path_label'], {'text': 'fat:/games', 'capacity': 512,
+                         'offset': 177, 'string_width': 2000, 'width': 216})
+
+    def test_path_label_is_not_dereferenced_outside_search_or_without_dialog(self):
+        for address, value in ((0x1048, 1), (0x10a0, 0)):
+            d, data, read = fixture()
+            data[address:address + (1 if address == 0x1048 else 4)] = value.to_bytes(
+                1 if address == 0x1048 else 4, 'little')
+            data[0x6800:0x6804] = (0x04000000).to_bytes(4, 'little')
+            state = asyncio.run(read_browser_state(d, read, frozen=True))
+            self.assertIsNone(state['path_label'])
+
+    def test_loaded_folder_path_is_owned_and_can_exceed_launch_capacity(self):
+        d, data, read = fixture()
+        path = 'fat:/games/' + 'path-' * 70 + '保存'
+        encoded = path.encode() + b'\0'
+        data[0x6400:0x6400 + len(encoded)] = encoded
+        state = asyncio.run(read_browser_state(d, read, frozen=True))
+        self.assertEqual(state['folder_path'], path)
+        data[0x1054:0x1058] = b'\0' * 4
+        state = asyncio.run(read_browser_state(d, read, frozen=True))
+        self.assertIsNone(state['folder_path'])
+
     def test_absolute_zero_function_symbol_is_not_a_vtable_entry(self):
         symbols = [dict(st_info={'type': 'STT_FUNC'}, st_value=value, st_shndx=section)
                    for value, section in ((0, 'SHN_ABS'), (0, 'SHN_UNDEF'), (0x02008000, 1))]

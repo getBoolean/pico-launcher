@@ -22,13 +22,17 @@ Touch input is also supported.
 To search for a file, move the selector to the search icon next to the cogwheel and press A. A keyboard opens on the bottom screen.
 
 - DPAD and A: Type on the keyboard. You can also tap the keys.
-- Folder button (top right): Also search the subfolders of the current folder, up to 8 levels deep. At most 256 results are shown.
-- Y: Clear the search.
+- X: Switch between the current folder and including subfolders, up to 8 levels deep. At most 256 of the best subfolder results are shown. The bottom hint tells you what pressing X will do next.
+- Y: Clear the search and return to current-folder-only scope.
 - B: Close the keyboard. The results stay in the file browser, so you can launch them.
 
-Search ignores upper and lower case and matches any part of the file name. While a search is active, the search icon is highlighted. Going up a folder ends the search.
+Search ignores upper and lower case and matches any part of the filename. It also handles small typing mistakes automatically: for example, `gmae` can find `game.nds`. Literal matches appear before approximate matches, including when names are sorted from Z to A. Very short queries use literal matching only.
 
-Subfolder results whose full path exceeds the launcher's 255-character limit are skipped.
+The full current folder path appears above the keyboard in either scope. Long paths scroll through their complete text. Closing and reopening search restores the query and scope; entering or leaving a folder ends the search. While a search is active, the search icon is highlighted.
+
+With an empty query, X changes the scope for the next search without scanning subfolders. Deleting the last character keeps that scope choice; Y resets it.
+
+Subfolder results whose full launch path exceeds 255 bytes are skipped.
 
 ## Settings menu
 The settings menu can be accessed by using the DPAD to move the selector to the cogwheel icon and pressing A. When in the settings menu, press the B button will to return to the file browser.

@@ -12,8 +12,9 @@ using the magnifying-glass icon next to the settings gear: tap it, or select it
 with the D-pad and press A.
 
 - Type with the touchscreen keyboard or the D-pad and A.
-- Match any part of a filename, regardless of letter case.
-- Search the current folder, or use the folder button to include subfolders.
+- Match any part of a filename, regardless of letter case. Small typing mistakes are handled automatically, with literal matches shown first.
+- Search the current folder, or press X to include subfolders.
+- See the full folder path above the keyboard. Long paths scroll so you can read them completely.
 - Press Y to clear the search, or B to close the keyboard and browse the results.
 
 Search in Material, Raspberry and dark mode:

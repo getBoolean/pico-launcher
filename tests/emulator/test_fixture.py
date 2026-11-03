@@ -80,6 +80,18 @@ class FixtureTests(unittest.TestCase):
         self.assertEqual(json.loads((second / "_pico/settings.json").read_text()),
                          self.manifest["settings"])
 
+    def test_ranking_and_long_path_fixtures_cross_the_real_boundaries(self):
+        tree = self.root / 'card'
+        self.prepare(tree)
+        self.assertEqual(len(list((tree / 'games/stress/aaa-cap').glob('cpa-*.nds'))), 260)
+        self.assertEqual((tree / 'games/stress/zzz-cap/cap-exact.nds').read_bytes(), b'A' * 1024)
+        path = tree / 'games/stress/longpath'
+        for index in range(9):
+            path /= f'path_segment_{index:02}_' + 'x' * 18
+        self.assertTrue(path.is_dir())
+        self.assertEqual((path / 'x.nds').read_bytes(), b'A' * 1024)
+        self.assertGreater(len(('/' + path.relative_to(tree).as_posix()).encode()), 255)
+
     def test_bad_archive_hash_fails_before_preparing_tree(self):
         with self.assertRaisesRegex(ValueError, "SHA-256"):
             fixture.prepare_tree(self.repo, self.archive, self.children,
