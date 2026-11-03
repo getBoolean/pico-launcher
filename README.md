@@ -16,7 +16,13 @@ with the D-pad and press A.
 - Search the current folder, or use the folder button to include subfolders.
 - Press Y to clear the search, or B to close the keyboard and browse the results.
 
-![Search keyboard with subfolder search enabled](docs/images/Search.png)
+Search in Material, Raspberry and dark mode:
+
+<p>
+  <img src="docs/images/Search.png" width="256" alt="Search in the Material theme">
+  <img src="docs/images/SearchRaspberry.png" width="256" alt="Search in the Raspberry theme">
+  <img src="docs/images/SearchDark.png" width="256" alt="Search in Material dark mode">
+</p>
 
 ## Features
 - Can load homebrew and retail games using [Pico Loader](https://github.com/LNH-team/pico-loader).
