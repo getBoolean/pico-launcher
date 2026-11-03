@@ -5,6 +5,10 @@ the same packages, card fixtures and expected outcomes. The emucap fork keeps
 `feat/nds-storage-image` ready for upstream contribution and puts release
 packaging on `pico/1.1.0-storage`.
 
+The fork's native DeSmuME packages include the CompactFlash command/status fix
+needed for Pico Loader to initialize the card. The dependency lock records both
+the upstream revision and the applied patch-stack hash.
+
 ## Package setup
 
 `tools/emulator/versions.json` records the exact core, native emulator and loader
