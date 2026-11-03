@@ -1,27 +1,8 @@
 #include "common.h"
 #include <string.h>
-#include <ctype.h>
 #include <algorithm>
 #include "SdFolder.h"
-
-static bool CaseInsensitiveContains(const char* haystack, const char* needle)
-{
-    if (!needle[0])
-        return true;
-    for (; *haystack; haystack++)
-    {
-        const char* h = haystack;
-        const char* n = needle;
-        while (*h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n))
-        {
-            h++;
-            n++;
-        }
-        if (!*n)
-            return true;
-    }
-    return false;
-}
+#include "SearchMatcher.h"
 
 SdFolder::SdFolder(FileInfo** files, int fileCount)
     : _files(files), _fileCount(fileCount) { }
@@ -38,6 +19,8 @@ std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
 {
     bool hasSearchQuery = filterSortParams.searchQuery && filterSortParams.searchQuery[0];
     auto sortedFilteredFiles = std::make_unique<const FileInfo*[]>(_fileCount);
+    auto candidates = hasSearchQuery ? std::make_unique<SearchCandidate[]>(_fileCount) : nullptr;
+    auto matcher = hasSearchQuery ? std::make_unique<SearchMatcher>(filterSortParams.searchQuery) : nullptr;
     u32 filteredCount = 0;
     for (int i = 0; i < _fileCount; i++)
     {
@@ -52,10 +35,21 @@ std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
         {
             if (classification == FileTypeClassification::Folder)
                 continue;
-            if (!CaseInsensitiveContains(file->GetFileName(), filterSortParams.searchQuery))
+            int score = matcher->Match(file->GetFileName());
+            if (score < 0)
                 continue;
+            candidates[filteredCount] = { file, score };
         }
         sortedFilteredFiles[filteredCount++] = file;
+    }
+    if (hasSearchQuery)
+    {
+        std::sort(candidates.get(), candidates.get() + filteredCount,
+            SearchCandidateLess { filterSortParams.sortDirection });
+        for (u32 i = 0; i < filteredCount; i++)
+            sortedFilteredFiles[i] = candidates[i].file;
+        resultCount = filteredCount;
+        return sortedFilteredFiles;
     }
     std::sort(sortedFilteredFiles.get(), sortedFilteredFiles.get() + filteredCount,
         [filterSortParams] (const FileInfo*& a, const FileInfo*& b)
