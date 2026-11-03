@@ -278,8 +278,16 @@ async def replacement(case):
     await case.expect('ONE', ['space-dash one.nds'])
 
 
+async def scope_hotkey(case):
+    await case.key('x')
+    await case.expect('', INITIAL, recursive=True)
+    await case.key('x')
+    await case.expect('', INITIAL)
+
+
 CASES = {'current-folder': current_folder, 'empty-and-limit': empty_and_limit,
-         'recursive': recursive, 'cancellation': cancellation, 'replacement': replacement}
+         'recursive': recursive, 'cancellation': cancellation, 'replacement': replacement,
+         'scope-hotkey': scope_hotkey}
 
 
 async def run(args):

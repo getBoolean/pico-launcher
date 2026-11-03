@@ -352,7 +352,6 @@ void App::HandleShowSearchTrigger()
     auto searchDialog = SearchBottomSheetView::CreateShared(
         &_romBrowserController, &_theme->GetMaterialColorScheme(),
         _theme->GetFontRepository());
-    searchDialog->SetGraphics(_iconButtonViewVram);
     _dialogPresenter.ShowDialog(std::move(searchDialog));
 }
 
