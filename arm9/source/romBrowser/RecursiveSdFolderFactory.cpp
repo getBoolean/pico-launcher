@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "core/StringUtil.h"
 #include "fat/Directory.h"
+#include "fat/CurrentDirectoryPath.h"
 #include "FileInfo.h"
 #include "RecursiveSdFolderFactory.h"
 #include "SearchMatcher.h"
@@ -28,10 +29,12 @@ SharedPtr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
 
     auto frames = std::make_unique<Frame[]>(MAX_DEPTH + 1);
     auto sdFileInfo = std::make_unique<FILINFO>();
-    auto cwd = std::make_unique<TCHAR[]>(256);
-    if (f_getcwd(cwd.get(), 256) != FR_OK)
+    auto cwd = ReadCurrentDirectoryPath();
+    if (!cwd)
         return nullptr;
     const size_t cwdLength = strlen(cwd.get());
+    if (cwdLength >= 256)
+        return SharedPtr<SdFolder>::MakeShared(nullptr, 0);
     auto files = (FileInfo**)malloc(sizeof(FileInfo*) * MAX_RESULTS);
     if (!files)
         return nullptr;

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "fat/ff.h"
+#include "fat/CurrentDirectoryPath.h"
 #include "RecursiveSdFolderFactory.h"
 
 extern "C" void shared_ptr_increase_ref_count(vu32& count) { count = count + 1; }
@@ -24,11 +25,12 @@ static vu8 canceled;
 static int reads, cancelAt, failAt;
 static bool cwdAvailable = true;
 static std::string cwd = "/games";
-FRESULT f_getcwd(TCHAR* out, u32 size)
+std::unique_ptr<char[]> ReadCurrentDirectoryPath()
 {
-    if (!cwdAvailable || cwd.size() >= size) return FR_DISK_ERR;
-    strcpy(out, cwd.c_str());
-    return FR_OK;
+    if (!cwdAvailable) return nullptr;
+    auto path = std::make_unique<char[]>(cwd.size() + 1);
+    strcpy(path.get(), cwd.c_str());
+    return path;
 }
 FRESULT f_opendir(DIR* dir, const TCHAR* path)
 {
@@ -162,6 +164,9 @@ int main()
     assert(search()->GetFileCount() == 1); // Complete path has 255 bytes.
     cwd += 'x';
     assert(search()->GetFileCount() == 0);
+    cwd = "/" + std::string(300, 'x');
+    result = search();
+    assert(result && result->GetFileCount() == 0);
     reset(); tree["."] = {{"A", AM_DIR}}; tree["A"] = {{"game.nds"}};
     assert(search("absent")->GetFileCount() == 0);
     puts("Recursive search bounds, cancellation, visibility and FAT failures passed");

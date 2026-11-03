@@ -288,12 +288,12 @@ void RomBrowserController::HandleNavigateTrigger()
         _navigateFileName = nullptr;
         if (strcmp(_navigatePath, "/") != 0) // can't f_stat on root dir
         {
-            FILINFO fileInfo;
-            if (f_stat(_navigatePath, &fileInfo) != FR_OK)
+            auto fileInfo = std::make_unique<FILINFO>();
+            if (f_stat(_navigatePath, fileInfo.get()) != FR_OK)
             {
                 StringUtil::Copy(_navigatePath, "/", sizeof(_navigatePath) / sizeof(_navigatePath[0]));
             }
-            else if (!(fileInfo.fattrib & AM_DIR))
+            else if (!(fileInfo->fattrib & AM_DIR))
             {
                 _navigateFileName = strrchr(_navigatePath, '/') + 1;
                 _navigateFileName[-1] = 0;
@@ -342,6 +342,8 @@ void RomBrowserController::HandleChangeDisplayModeTrigger()
         std::array<char, sizeof(_searchQuery)> query;
         StringUtil::Copy(query.data(), _searchQuery, query.size());
         ApplySearch(query.data(), true);
+        _romBrowserViewModel.Reset();
+        RecreateRomBrowserViewModel();
         return;
     }
     RecreateRomBrowserViewModel();
