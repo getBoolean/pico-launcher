@@ -86,12 +86,12 @@ bool touch_update(touchPosition& touchPos)
             // Apply an IIR filter on noisy X/Y samples.
             // Skip the IIR filter if the pen was just pressed.
             int n = (noisiness - TOUCH_MAX_NOISE_PEN_UP_IIR_MIN);
-            if (noisiness <= 0 || !lastPenDown)
+            if (n <= 0 || !lastPenDown)
             {
                 lastTouchPosition.rawx = rawXresult.value;
                 lastTouchPosition.rawy = rawYresult.value;
             }
-            else if (noisiness <= TOUCH_MAX_NOISE_PEN_UP_IIR_RATIO)
+            else if (n <= TOUCH_MAX_NOISE_PEN_UP_IIR_RATIO)
             {
                 lastTouchPosition.rawx =
                     ((rawXresult.value * (TOUCH_MAX_NOISE_PEN_UP_IIR_RATIO - n))

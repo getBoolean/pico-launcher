@@ -11,6 +11,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  host_regressions:
+    runs-on: ubuntu-24.04
+    name: Search and task queue regressions
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Run production host regressions
+        run: |
+          bash tests/search/run.sh
+          bash tests/taskQueue/run.sh
   pico_launcher:
     runs-on: ubuntu-24.04
     container: skylyrac/blocksds@sha256:7bea1d0b6026b27036e16ab089770e9864f5844848ccf51e1882d278be116650

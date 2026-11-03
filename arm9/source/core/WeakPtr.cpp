@@ -6,9 +6,9 @@ void WeakPtrBase::ResetIntern()
 {
     u32 irq = rtos_disableIrqs();
     auto refCount = _refCount;
-    if (--refCount->weakRefCount == 0)
+    _refCount = nullptr;
+    if (--refCount->weakRefCount == 0 && refCount->refCount == 0)
     {
-        _refCount = nullptr;
         rtos_restoreIrqs(irq);
         delete refCount;
     }

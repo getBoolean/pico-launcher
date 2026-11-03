@@ -80,11 +80,12 @@ std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
                 case SdFolderSortType::Name:
                 default:
                 {
-                    result = CompareName(a, b);
+                    result = sortDirection == SdFolderSortDirection::Ascending
+                        ? CompareName(a, b) : CompareName(b, a);
                     break;
                 }
             }
-            return sortDirection == SdFolderSortDirection::Ascending ? result : !result;
+            return result;
         });
     resultCount = filteredCount;
     return sortedFilteredFiles;

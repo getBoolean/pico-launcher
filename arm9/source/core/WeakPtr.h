@@ -15,7 +15,7 @@ public:
     {
         if (_refCount)
         {
-            Reset();
+            ResetIntern();
         }
     }
 
@@ -81,6 +81,8 @@ public:
 
     WeakPtr& operator=(const WeakPtr& other)
     {
+        if (this == &other)
+            return *this;
         Reset();
         _object = other._object;
         _refCount = other._refCount;
@@ -119,6 +121,8 @@ public:
 
     WeakPtr& operator=(WeakPtr&& other)
     {
+        if (this == &other)
+            return *this;
         Reset();
         _object = other._object;
         _refCount = other._refCount;
@@ -151,7 +155,7 @@ public:
     }
 
 private:
-    T* _object;
+    T* _object = nullptr;
 
     WeakPtr(T* object, RefCount* refCount)
         : WeakPtrBase(refCount), _object(object) { }
