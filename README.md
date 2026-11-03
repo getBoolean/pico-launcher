@@ -1,9 +1,11 @@
 # Pico Launcher
-This repository contains Pico Launcher, which is a front-end for [Pico Loader](https://github.com/LNH-team/pico-loader).
 
-![Horizontal display mode with custom theme](docs/images/HorizontalCustom.png)
-![Banner list display mode](docs/images/List.png)
-![Coverflow display mode](docs/images/Coverflow.png)
+> [!IMPORTANT]
+> This fork is no longer maintained. I now recommend
+> [Pico Launcher Enhanced](https://github.com/rasalopa/pico-launcher-enhanced).
+> The final release of this fork includes the search features shown below.
+
+This repository contains Pico Launcher, which is a front-end for [Pico Loader](https://github.com/LNH-team/pico-loader).
 
 ## What this fork adds
 
@@ -17,7 +19,9 @@ with the D-pad and press A.
 - See the full folder path above the keyboard. Long paths scroll so you can read them completely.
 - Press Y to clear the search, or B to close the keyboard and browse the results.
 
-Search in Material, Raspberry and dark mode:
+### Search screenshots
+
+Our search pages in Material, Raspberry and dark mode:
 
 <p>
   <img src="docs/images/Search.png" width="256" alt="Search in the Material theme">
@@ -26,6 +30,11 @@ Search in Material, Raspberry and dark mode:
 </p>
 
 ## Features
+
+![Horizontal display mode with custom theme](docs/images/HorizontalCustom.png)
+![Banner list display mode](docs/images/List.png)
+![Coverflow display mode](docs/images/Coverflow.png)
+
 - Can load homebrew and retail games using [Pico Loader](https://github.com/LNH-team/pico-loader).
 - Various display modes
     - Horizontal and vertical icon grid
