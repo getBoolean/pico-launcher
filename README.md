@@ -5,6 +5,19 @@ This repository contains Pico Launcher, which is a front-end for [Pico Loader](h
 ![Banner list display mode](docs/images/List.png)
 ![Coverflow display mode](docs/images/Coverflow.png)
 
+## What this fork adds
+
+Find games by name without scrolling through your whole collection. Open search
+using the magnifying-glass icon next to the settings gear: tap it, or select it
+with the D-pad and press A.
+
+- Type with the touchscreen keyboard or the D-pad and A.
+- Match any part of a filename, regardless of letter case.
+- Search the current folder, or use the folder button to include subfolders.
+- Press Y to clear the search, or B to close the keyboard and browse the results.
+
+![Search keyboard with subfolder search enabled](docs/images/Search.png)
+
 ## Features
 - Can load homebrew and retail games using [Pico Loader](https://github.com/LNH-team/pico-loader).
 - Various display modes
