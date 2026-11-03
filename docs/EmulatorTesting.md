@@ -92,6 +92,12 @@ observations against the ROM, ELF, fixture and package identities.
 
 ## Writable card fixtures
 
+The build workflow pins the BlocksDS container by digest and publishes
+`Pico_Emulator_Fixture`: the launcher ROM, matching ARM9 ELF, writable card image,
+fixture identity, scenario manifest and dependency lock. The identity records
+the ROM, ELF, image, loader and lock hashes so runtime checks can reject a mixed
+artifact set. The ordinary `Pico_Launcher` download also includes the ARM9 ELF.
+
 Build the marked child ROMs inside the project's BlocksDS build environment:
 
 ```sh

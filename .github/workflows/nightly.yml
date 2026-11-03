@@ -12,21 +12,58 @@ on:
 
 jobs:
   pico_launcher:
-    runs-on: ubuntu-latest
-    container: skylyrac/blocksds:slim-v1.16.0
+    runs-on: ubuntu-24.04
+    container: skylyrac/blocksds@sha256:7bea1d0b6026b27036e16ab089770e9864f5844848ccf51e1882d278be116650
+    env:
+      BLOCKSDS: /opt/wonderful/thirdparty/blocksds/core
+      BLOCKSDSEXT: /opt/wonderful/thirdparty/blocksds/external
     name: Build Pico Launcher
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: true
       - name: Run build script
         run: |
           make
+      - name: Prepare complete emulator fixture
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3
+          make -C tests/emulator/fixtures/children CHILD=A
+          make -C tests/emulator/fixtures/children CHILD=B
+          mkdir -p out/emulator/downloads
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import urllib.request
+          lock = json.loads(Path('tools/emulator/versions.json').read_text())
+          urllib.request.urlretrieve(lock['loader']['url'], 'out/emulator/downloads/loader.zip')
+          PY
+          python3 tests/emulator/build_fixture.py \
+            --loader-archive out/emulator/downloads/loader.zip \
+            --child-a tests/emulator/fixtures/children/child_A.nds \
+            --child-b tests/emulator/fixtures/children/child_B.nds \
+            --launcher LAUNCHER.nds --elf build/arm9.elf \
+            --mkfatimg "$BLOCKSDS/tools/mkfatimg/mkfatimg" \
+            --output out/emulator/fixture
       - name: Publish build to GH Actions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: |
             _pico/
             LAUNCHER.nds
+            build/arm9.elf
           name: Pico_Launcher
+      - name: Publish matching emulator fixture
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          path: |
+            LAUNCHER.nds
+            build/arm9.elf
+            out/emulator/fixture/card.img
+            out/emulator/fixture/identity.json
+            tests/emulator/fixtures/manifest.json
+            tools/emulator/versions.json
+          name: Pico_Emulator_Fixture
+          if-no-files-found: error
