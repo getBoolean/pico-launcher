@@ -11,8 +11,10 @@ class ICoverRepository;
 class RomBrowserViewModel
 {
 public:
-    RomBrowserViewModel(IRomBrowserController* romBrowserController, const char* initialSelectedFileName = nullptr);
+    RomBrowserViewModel(IRomBrowserController* romBrowserController,
+        const char* initialSelectedFileName = nullptr, const char* searchQuery = nullptr);
 
+    IRomBrowserController* GetRomBrowserController() const { return _romBrowserController; }
     FileInfoManager& GetFileInfoManager() const { return *_fileInfoManager; }
     TaskQueueBase* GetIoTaskQueue() const { return _romBrowserController->GetIoTaskQueue(); }
     TaskQueueBase* GetBgTaskQueue() const { return _romBrowserController->GetBgTaskQueue(); }
@@ -24,12 +26,12 @@ public:
     constexpr u32 GetIconFrameCounter() const { return _iconFrameCounter; }
     void SetIconFrameCounter(u32 iconFrameCounter) { _iconFrameCounter = iconFrameCounter; }
 
-    void ItemActivated();
     void NavigateUp();
-    void ShowGameInfo();
 
 private:
     IRomBrowserController* _romBrowserController;
+    // FileInfoManager stores pointers into this folder.
+    SharedPtr<const SdFolder> _sdFolder;
     std::unique_ptr<FileInfoManager> _fileInfoManager;
     int _selectedItem = -1;
     u32 _iconFrameCounter = 0;

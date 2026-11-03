@@ -14,8 +14,6 @@ public:
         Vertical
     };
 
-    virtual ~AppBarView();
-
     void SetButtonIcon(int button, u32 vramOffset)
     {
         _buttons[button]->SetIconVramOffset(vramOffset);
@@ -26,16 +24,21 @@ public:
         _buttons[button]->SetAction(action, arg);
     }
 
+    void SetButtonState(int button, IconButtonView::State state)
+    {
+        _buttons[button]->SetState(state);
+    }
+
     Rectangle GetBounds() const override;
     void Update() override;
-    View* MoveFocus(View* currentFocus, FocusMoveDirection direction, View* source) override;
+    SharedPtr<View> MoveFocus(const SharedPtr<View>& currentFocus, FocusMoveDirection direction, View* source) override;
     void Focus(FocusManager& focusManager, int button);
 
     constexpr Orientation GetOrientation() const { return _orientation; }
 
 protected:
     Orientation _orientation;
-    std::unique_ptr<IconButtonView*[]> _buttons;
+    std::unique_ptr<SharedPtr<IconButtonView>[]> _buttons;
     int _startButtonCount;
     int _endButtonCount;
 

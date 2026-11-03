@@ -107,9 +107,10 @@ void LabelView::UpdateTileBuffer()
 
 QueueTask<void> LabelView::UpdateTileBufferAsync(TaskQueueBase* taskQueue)
 {
-    return taskQueue->Enqueue([this] (const vu8& canceled)
+    auto self = SharedPtr<LabelView>(SharedFromThis());
+    return taskQueue->Enqueue([self] (const vu8& canceled)
     {
-        UpdateTileBuffer();
+        self->UpdateTileBuffer();
         return TaskResult<void>::Completed();
     });
 }

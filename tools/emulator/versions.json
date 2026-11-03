@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "core": {
+    "version": "1.1.0-pico.4",
+    "source_revision": "c766d132f0608cd069fde7f18fc9ebbb1150b4c9",
+    "upstream_base_revision": "8587968a5e77acb51fdd76caa2bf04d17ce56082",
+    "contribution_branch": "feat/nds-storage-image",
+    "windows": {
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-x86_64-pc-windows-msvc.zip",
+      "sha256": "58f8f827073366d6edd0522c7b51687075490a454eeefd9296d161dca11035da",
+      "root": "emucap-1.1.0-pico.4-x86_64-pc-windows-msvc"
+    },
+    "linux": {
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "c6be6209d987f486546d40a5ac6ae129a1d043065b466dff480ef7b542eb4cfd",
+      "root": "emucap-1.1.0-pico.4-x86_64-unknown-linux-gnu"
+    }
+  },
+  "desmume": {
+    "version": "1.1.0-pico.4",
+    "source_revision": "1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a",
+    "windows": {
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-desmume-nds-windows-x86_64.zip",
+      "sha256": "0ffb0cc4824c33a893efb713138c12391380e2424e5a59227bc0fca4c842f777",
+      "root": "emucap-1.1.0-pico.4-desmume-nds-windows-x86_64"
+    },
+    "linux": {
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-desmume-nds-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "43f168b9af77f8cd313c5342b6aaa9a3ca22d027a73a8009fde538ed6bda9fdf",
+      "root": "emucap-1.1.0-pico.4-desmume-nds-x86_64-unknown-linux-gnu"
+    },
+    "emucap_source_revision": "c766d132f0608cd069fde7f18fc9ebbb1150b4c9",
+    "patchset_sha256": "d72c44a55ddd3fb901d585a36cafa21490fc514763080f26e5297acd70a06b89"
+  },
+  "loader": {
+    "version": "1.7.1",
+    "url": "https://github.com/LNH-team/pico-loader/releases/download/v1.7.1/Pico_Loader_MPCF.zip",
+    "sha256": "07b4d3aa03233509e04fc9f75aacb30d4e0a43d9dba74e0732bae3588e2d5d8c"
+  },
+  "build_toolchain": {
+    "image": "skylyrac/blocksds:slim-v1.16.0",
+    "digest": "sha256:7bea1d0b6026b27036e16ab089770e9864f5844848ccf51e1882d278be116650"
+  }
+}

@@ -1,24 +1,22 @@
 #include "common.h"
 #include "TaskQueue.h"
 
-void TaskQueueBase::ThreadMain(TaskBase** queue, u32 queueLength)
+void TaskQueueBase::ThreadMain()
 {
     while (true)
     {
         _idle = false;
-        u32 readPtr = _queueReadPtr;
-        while (readPtr != _queueWritePtr)
+        while (true)
         {
-            TaskBase* task = queue[readPtr];
-            if (readPtr == queueLength - 1)
-                readPtr = 0;
-            else
-                readPtr++;
-            _queueReadPtr = readPtr;
+            u32 irqs = rtos_disableIrqs();
+            auto task = _taskList.GetHead();
             if (!task)
-                continue;
-            task->Execute();
-            if (task->GetDestroyWhenComplete())
+            {
+                rtos_restoreIrqs(irqs);
+                break;
+            }
+            _taskList.Remove(task);
+            if (task->Execute(irqs))
             {
                 // this will destroy the task
                 ReturnOwnership(task);

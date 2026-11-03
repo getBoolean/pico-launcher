@@ -3,7 +3,26 @@
 ## [Unreleased]
 
 ### Added
+- Support for custom BMP icons for games and folders - by @tasken
+- Support for custom NDS banners (custom titles, subtitles and animated icons) for games and folders - by @tasken
+- Theme selector
+- Support for custom folder covers via a cover.bmp file placed inside the folder - by @tasken
+- Search for files in the current folder, optionally including subfolders
+
+### Fixed
+- Top screen cover is now displayed/hidden correctly when placed partially or fully off-screen
+- DSi banners with missing DSi part now fall back to the DS icon
+- Game-code cover lookup no longer searches on a stale buffer when a file has no game code
+
+## [v1.3.0] - 18 Apr 2026
+
+### Added
 - Ability to set the position of the top screen cover image in custom themes
+- Support for fast scrolling with the L and R buttons in coverflow display mode
+- Support for touch input
+
+### Fixed
+- Use after free bug with the texture load request in Label3DView. This occurred for example when spamming B in banner list mode.
 
 ## [v1.2.0] - 29 Mar 2026
 

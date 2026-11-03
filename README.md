@@ -5,6 +5,26 @@ This repository contains Pico Launcher, which is a front-end for [Pico Loader](h
 ![Banner list display mode](docs/images/List.png)
 ![Coverflow display mode](docs/images/Coverflow.png)
 
+## What this fork adds
+
+Find games by name without scrolling through your whole collection. Open search
+using the magnifying-glass icon next to the settings gear: tap it, or select it
+with the D-pad and press A.
+
+- Type with the touchscreen keyboard or the D-pad and A.
+- Match any part of a filename, regardless of letter case. Small typing mistakes are handled automatically, with literal matches shown first.
+- Search the current folder, or press X to include subfolders.
+- See the full folder path above the keyboard. Long paths scroll so you can read them completely.
+- Press Y to clear the search, or B to close the keyboard and browse the results.
+
+Search in Material, Raspberry and dark mode:
+
+<p>
+  <img src="docs/images/Search.png" width="256" alt="Search in the Material theme">
+  <img src="docs/images/SearchRaspberry.png" width="256" alt="Search in the Raspberry theme">
+  <img src="docs/images/SearchDark.png" width="256" alt="Search in Material dark mode">
+</p>
+
 ## Features
 - Can load homebrew and retail games using [Pico Loader](https://github.com/LNH-team/pico-loader).
 - Various display modes
@@ -12,7 +32,7 @@ This repository contains Pico Launcher, which is a front-end for [Pico Loader](h
     - Banner list
     - Coverflow
 - [File associations](docs/FileAssociations.md)
-- [Covers](docs/Covers.md)
+- [Custom Icons, Banners & Covers](docs/Customization.md)
 - [Material Design 3 and custom themes](docs/Themes.md)
 - Support for background music (see [Themes](docs/Themes.md))
 - Support for cheats (See [Cheats](docs/Cheats.md))
@@ -23,7 +43,7 @@ General usage documentation can be found here: [Usage](docs/Usage.md).
 We recommend using WSL (Windows Subsystem for Linux), or MSYS2 to compile this repository.
 The steps provided will assume you already have one of those environments set up.
 
-1. Install [BlocksDS](https://blocksds.skylyrac.net/docs/setup/options/)
+1. Install [BlocksDS](https://blocksds.skylyrac.net/docs/setup/)
 
 ## Compiling
 

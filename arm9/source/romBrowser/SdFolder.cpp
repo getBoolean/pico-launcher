@@ -2,6 +2,7 @@
 #include <string.h>
 #include <algorithm>
 #include "SdFolder.h"
+#include "SearchMatcher.h"
 
 SdFolder::SdFolder(FileInfo** files, int fileCount)
     : _files(files), _fileCount(fileCount) { }
@@ -14,20 +15,41 @@ SdFolder::~SdFolder()
 }
 
 std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
-    const SdFolderFilterSortParams& filterSortParams, int& resultCount) const
+    const SdFolderFilterSortParams& filterSortParams, u32& resultCount) const
 {
+    bool hasSearchQuery = filterSortParams.searchQuery && filterSortParams.searchQuery[0];
     auto sortedFilteredFiles = std::make_unique<const FileInfo*[]>(_fileCount);
-    int filteredCount = 0;
+    auto candidates = hasSearchQuery ? std::make_unique<SearchCandidate[]>(_fileCount) : nullptr;
+    auto matcher = hasSearchQuery ? std::make_unique<SearchMatcher>(filterSortParams.searchQuery) : nullptr;
+    u32 filteredCount = 0;
     for (int i = 0; i < _fileCount; i++)
     {
         const FileInfo* file = _files[i];
         bool isHidden = file->GetFileName()[0] == '.' || file->IsHidden();
         auto classification = file->GetFileType()->GetClassification();
-        if (classification != FileTypeClassification::Unknown &&
-            (!isHidden || filterSortParams.includeHiddenFiles))
+        if (classification == FileTypeClassification::Unknown)
+            continue;
+        if (isHidden && !filterSortParams.includeHiddenFiles)
+            continue;
+        if (hasSearchQuery)
         {
-            sortedFilteredFiles[filteredCount++] = file;
+            if (classification == FileTypeClassification::Folder)
+                continue;
+            int score = matcher->Match(file->GetFileName());
+            if (score < 0)
+                continue;
+            candidates[filteredCount] = { file, score };
         }
+        sortedFilteredFiles[filteredCount++] = file;
+    }
+    if (hasSearchQuery)
+    {
+        std::sort(candidates.get(), candidates.get() + filteredCount,
+            SearchCandidateLess { filterSortParams.sortDirection });
+        for (u32 i = 0; i < filteredCount; i++)
+            sortedFilteredFiles[i] = candidates[i].file;
+        resultCount = filteredCount;
+        return sortedFilteredFiles;
     }
     std::sort(sortedFilteredFiles.get(), sortedFilteredFiles.get() + filteredCount,
         [filterSortParams] (const FileInfo*& a, const FileInfo*& b)
@@ -52,11 +74,12 @@ std::unique_ptr<const FileInfo*[]> SdFolder::FilterAndSort(
                 case SdFolderSortType::Name:
                 default:
                 {
-                    result = CompareName(a, b);
+                    result = sortDirection == SdFolderSortDirection::Ascending
+                        ? CompareName(a, b) : CompareName(b, a);
                     break;
                 }
             }
-            return sortDirection == SdFolderSortDirection::Ascending ? result : !result;
+            return result;
         });
     resultCount = filteredCount;
     return sortedFilteredFiles;

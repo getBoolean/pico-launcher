@@ -1,29 +1,25 @@
 #pragma once
-#include "gui/views/View.h"
+#include "gui/views/ViewContainer.h"
 #include "AppBarView.h"
 #include "../viewModels/RomBrowserAppBarViewModel.h"
 
 class RomBrowserDisplayMode;
 class IRomBrowserViewFactory;
 
-class RomBrowserAppBarView : public View
+class RomBrowserAppBarView : public ViewContainer
 {
-public:
-    RomBrowserAppBarView(
-        RomBrowserAppBarViewModel* viewModel, const RomBrowserDisplayMode& displayMode,
-        const IRomBrowserViewFactory* romBrowserViewFactory);
+    SHARED_ONLY(RomBrowserAppBarView)
 
+public:
     void InitVram(const VramContext& vramContext) override;
     void Update() override;
-    void Draw(GraphicsContext& graphicsContext) override;
-    void VBlank() override;
 
     Rectangle GetBounds() const override
     {
         return Rectangle(0, 0, 256, 192);
     }
 
-    View* MoveFocus(View* currentFocus, FocusMoveDirection direction, View* source) override;
+    SharedPtr<View> MoveFocus(const SharedPtr<View>& currentFocus, FocusMoveDirection direction, View* source) override;
 
     void Focus(FocusManager& focusManager)
     {
@@ -35,6 +31,7 @@ private:
     {
         APP_BAR_BUTTON_BACK = 0,
 
+        APP_BAR_BUTTON_SEARCH,
         APP_BAR_BUTTON_DISPLAY_SETTINGS,
         // APP_BAR_BUTTON_RECENT,
         // APP_BAR_BUTTON_FAVORITE,
@@ -42,5 +39,9 @@ private:
     };
 
     RomBrowserAppBarViewModel* _viewModel;
-    std::unique_ptr<AppBarView> _appBarView;
+    SharedPtr<AppBarView> _appBarView;
+
+    RomBrowserAppBarView(
+        RomBrowserAppBarViewModel* viewModel, const RomBrowserDisplayMode& displayMode,
+        const IRomBrowserViewFactory* romBrowserViewFactory);
 };

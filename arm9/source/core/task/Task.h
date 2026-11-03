@@ -3,14 +3,19 @@
 #include <memory>
 #include <libtwl/rtos/rtosIrq.h>
 #include <libtwl/rtos/rtosThread.h>
+#include "core/LinkedListLink.h"
 #include "TaskResult.h"
 
 class TaskBase
 {
 public:
+    LinkedListLink link;
+
     virtual ~TaskBase() { }
 
-    void Execute();
+    // Completion can wake a caller that destroys this task before Execute returns.
+    // The queue may access it afterwards only when this returns true.
+    bool Execute(u32 irqs);
 
     TaskState GetState() const { return _state; }
 
@@ -24,7 +29,7 @@ public:
     bool GetDestroyWhenComplete() const { return _destroyWhenComplete; }
     void SetDestroyWhenComplete() { _destroyWhenComplete = true; }
 
-    void RequestCancel() { _cancelRequested = true; }
+    void RequestCancel();
     bool IsCancelRequested() const { return _cancelRequested; }
 
 protected:
@@ -37,7 +42,7 @@ private:
     volatile TaskState _state = TaskState::NotStarted;
     volatile u8 _destroyWhenComplete = false;
 
-    void SetFinalState(TaskState finalState);
+    bool SetFinalState(TaskState finalState);
 };
 
 template <class T>
@@ -47,12 +52,12 @@ public:
     const T& GetResult() const { return this->_result; }
 
 protected:
-    virtual TaskResult<T> ExecuteFunc() const = 0;
+    virtual TaskResult<T> ExecuteFunc() = 0;
 
 private:
     T _result;
 
-    TaskState ExecuteDirect()
+    TaskState ExecuteDirect() override
     {
         auto result = ExecuteFunc();
         if (result.GetFinalState() == TaskState::Completed)

@@ -12,6 +12,7 @@
 #include "gui/DescendingStackVramManager.h"
 #include "material/scheme/scheme.h"
 #include "gui/input/PadInputSource.h"
+#include "gui/input/TouchInputSource.h"
 #include "gui/input/SampledInputProvider.h"
 #include "gui/input/InputRepeater.h"
 #include "gui/VBlankTextureLoader.h"
@@ -24,17 +25,16 @@
 #include "romBrowser/views/RomBrowserTopScreenView.h"
 #include "romBrowser/views/IconButton2DView.h"
 #include "romBrowser/views/ChipView.h"
-#include "romBrowser/Theme/Material/MaterialThemeFileIconFactory.h"
 #include "romBrowser/RomBrowserController.h"
 #include "DialogPresenter.h"
 #include "themes/ITheme.h"
-#include "core/SharedPtr.h"
 #include "animation/Animator.h"
 
 class alignas(32) App : public IProcess
 {
 public:
     App(IAppSettingsService& appSettingsService, IBgmService& bgmService);
+    ~App();
 
     void Run() override;
     void Exit() override;
@@ -63,9 +63,9 @@ private:
     Rgb6Palette _rgb6Palette;
     Animator<int> _fadeAnimator;
 
-    TaskQueue<32, 32> _ioTaskQueue;
+    TaskQueue<32, sizeof(TaskBase) + 32> _ioTaskQueue;
     u32 _ioTaskThreadStack[2048 / 4];
-    TaskQueue<32, 32> _bgTaskQueue;
+    TaskQueue<32, sizeof(TaskBase) + 32> _bgTaskQueue;
     u32 _bgTaskThreadStack[2048 / 4];
 
     std::unique_ptr<ITheme> _theme;
@@ -76,20 +76,19 @@ private:
     IBgmService& _bgmService;
     volatile bool _exit = false;
 
-    PadInputSource _inputSource;
+    PadInputSource _keyInputSource;
+    TouchInputSource _touchInputSource;
     SampledInputProvider _inputProvider;
     InputRepeater _inputRepeater;
 
-    std::unique_ptr<RomBrowserBottomScreenView> _romBrowserBottomScreenView;
-    std::unique_ptr<RomBrowserTopScreenView> _romBrowserTopScreenView;
+    SharedPtr<RomBrowserBottomScreenView> _romBrowserBottomScreenView;
+    SharedPtr<RomBrowserTopScreenView> _romBrowserTopScreenView;
 
     RomBrowserController _romBrowserController;
 
     DisplaySettingsViewModel _displaySettingsBottomSheetViewModel;
 
     FocusManager _focusManager;
-
-    std::unique_ptr<MaterialThemeFileIconFactory> _materialThemeFileIconFactory;
 
     RomBrowserBottomScreenViewModel _romBrowserBottomScreenViewModel;
 
@@ -104,20 +103,24 @@ private:
 
     bool _vcountIrqStarted = false;
 
+    Point _lastTouchPoint = Point(0, 0);
+
     void InitVramMapping() const;
     void DisplaySplashScreen() const;
     void LoadTheme();
     void VCountIrq();
+    void HandleInput();
     void HandleTrigger(RomBrowserStateTrigger trigger, RomBrowserState newState);
     void HandleShowGameInfoTrigger();
     void HandleHideGameInfoTrigger();
     void HandleShowDisplaySettingsTrigger();
     void HandleHideDisplaySettingsTrigger();
+    void HandleShowSearchTrigger();
+    void HandleHideSearchTrigger();
     void HandleNavigateTrigger();
     void HandleFolderLoadDoneTrigger();
+    void RecreateRomBrowserTopScreenView();
     void HandleChangeDisplayModeTrigger(RomBrowserState newState);
-
-    bool IsRomBrowserVisible() const;
 
     void MainLoop();
     void Update();

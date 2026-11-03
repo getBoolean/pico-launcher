@@ -8,6 +8,8 @@ class RomBrowserViewModel;
 class FileInfo;
 class TaskQueueBase;
 class ICoverRepository;
+class IIconRepository;
+class IBannerRepository;
 class ICheatRepository;
 
 class IRomBrowserController
@@ -22,10 +24,21 @@ public:
     virtual void HideGameInfo() = 0;
     virtual void ShowDisplaySettings() = 0;
     virtual void HideDisplaySettings() = 0;
+    virtual void GotoSettingsScreen() = 0;
+
+    virtual void ShowSearch() = 0;
+    virtual void HideSearch() = 0;
+    virtual void ApplySearch(const char* query, bool includeSubFolders) = 0;
+    virtual const char* GetSearchQuery() const = 0;
+    /// @return The actual loaded folder's full UTF-8 path, or null if unavailable.
+    virtual const char* GetCurrentFolderPath() const = 0;
+    virtual void ClearSearch() = 0;
+    virtual bool IsSearchActive() const = 0;
+    virtual bool IsSearchIncludingSubFolders() const = 0;
 
     virtual void Update() = 0;
 
-    virtual const SdFolder& GetSdFolder() const = 0;
+    virtual SharedPtr<const SdFolder> GetSdFolder() const = 0;
 
     virtual const RomBrowserStateMachine& GetStateMachine() const = 0;
 
@@ -34,6 +47,8 @@ public:
     virtual TaskQueueBase* GetIoTaskQueue() const = 0;
     virtual TaskQueueBase* GetBgTaskQueue() const = 0;
     virtual const ICoverRepository& GetCoverRepository() const = 0;
+    virtual const IIconRepository& GetIconRepository() const = 0;
+    virtual const IBannerRepository& GetBannerRepository() const = 0;
     virtual const ICheatRepository& GetCheatRepository() const = 0;
 
     virtual const RomBrowserDisplaySettings& GetRomBrowserDisplaySettings() const = 0;

@@ -3,8 +3,9 @@
 #include "romBrowser/FileType/Nds/NdsFileType.h"
 #include "RomBrowserViewModel.h"
 
-RomBrowserViewModel::RomBrowserViewModel(IRomBrowserController* romBrowserController, const char* initialSelectedFileName)
-    : _romBrowserController(romBrowserController)
+RomBrowserViewModel::RomBrowserViewModel(IRomBrowserController* romBrowserController,
+    const char* initialSelectedFileName, const char* searchQuery)
+    : _romBrowserController(romBrowserController), _sdFolder(romBrowserController->GetSdFolder())
 {
     SdFolderFilterSortParams filterSortParams;
     switch (romBrowserController->GetRomBrowserDisplaySettings().sortMode)
@@ -29,40 +30,19 @@ RomBrowserViewModel::RomBrowserViewModel(IRomBrowserController* romBrowserContro
             break;
         }
     }
+    filterSortParams.searchQuery = searchQuery;
     u64 startTick = gTickCounter.GetValue();
-    const auto& sdFolder = romBrowserController->GetSdFolder();
-    int filteredCount;
-    auto sortedFilteredFiles = sdFolder.FilterAndSort(filterSortParams, filteredCount);
+    u32 filteredCount;
+    auto sortedFilteredFiles = _sdFolder->FilterAndSort(filterSortParams, filteredCount);
     u64 endTick = gTickCounter.GetValue();
     LOG_DEBUG("Filter + sort took: %d us\n", (u32)TickCounter::TicksToMicroSeconds(endTick - startTick));
     _fileInfoManager = std::make_unique<FileInfoManager>(std::move(sortedFilteredFiles),
-        filteredCount, _romBrowserController->GetCoverRepository());
+        filteredCount, _romBrowserController->GetCoverRepository(), _romBrowserController->GetIconRepository(),
+        _romBrowserController->GetBannerRepository());
     _selectedItem = _fileInfoManager->GetItemIndex(initialSelectedFileName);
-}
-
-void RomBrowserViewModel::ItemActivated()
-{
-    const auto& item = _fileInfoManager->GetItem(_selectedItem);
-    if (item.GetFileType()->GetClassification() == FileTypeClassification::Folder)
-    {
-        _romBrowserController->NavigateToPath(item.GetFileName());
-    }
-    else
-    {
-        _romBrowserController->LaunchFile(item);
-    }
 }
 
 void RomBrowserViewModel::NavigateUp()
 {
     _romBrowserController->NavigateUp();
-}
-
-void RomBrowserViewModel::ShowGameInfo()
-{
-    const auto& item = _fileInfoManager->GetItem(_selectedItem);
-    if (item.GetFileType() == &NdsFileType::sInstance)
-    {
-        _romBrowserController->ShowGameInfo(item);
-    }
 }

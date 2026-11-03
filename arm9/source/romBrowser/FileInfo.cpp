@@ -3,18 +3,21 @@
 #include "core/StringUtil.h"
 #include "FileInfo.h"
 
-FileInfo::FileInfo(const FileInfo& fileInfo)
-    : _type(fileInfo._type), _fastFileRef(fileInfo._fastFileRef), _attributes(fileInfo._attributes)
+static std::unique_ptr<TCHAR[]> CopyString(const TCHAR* string)
 {
-    u32 bufferLength = strlen(fileInfo.GetFileName()) + 1;
-    _name = std::make_unique_for_overwrite<TCHAR[]>(bufferLength);
-    StringUtil::Copy(_name.get(), fileInfo.GetFileName(), bufferLength);
+    if (!string)
+        return nullptr;
+    u32 bufferLength = strlen(string) + 1;
+    auto copy = std::make_unique_for_overwrite<TCHAR[]>(bufferLength);
+    StringUtil::Copy(copy.get(), string, bufferLength);
+    return copy;
 }
 
-FileInfo::FileInfo(const TCHAR* fileName, const FileType* type, const FastFileRef& fastFileRef, u8 attributes)
-    : _type(type), _fastFileRef(fastFileRef), _attributes(attributes)
-{
-    u32 bufferLength = strlen(fileName) + 1;
-    _name = std::make_unique_for_overwrite<TCHAR[]>(bufferLength);
-    StringUtil::Copy(_name.get(), fileName, bufferLength);
-}
+FileInfo::FileInfo(const FileInfo& fileInfo)
+    : _name(CopyString(fileInfo.GetFileName())), _parentPath(CopyString(fileInfo.GetParentPath()))
+    , _type(fileInfo._type), _fastFileRef(fileInfo._fastFileRef), _attributes(fileInfo._attributes) { }
+
+FileInfo::FileInfo(const TCHAR* fileName, const FileType* type, const FastFileRef& fastFileRef, u8 attributes,
+    const TCHAR* parentPath)
+    : _name(CopyString(fileName)), _parentPath(CopyString(parentPath))
+    , _type(type), _fastFileRef(fastFileRef), _attributes(attributes) { }

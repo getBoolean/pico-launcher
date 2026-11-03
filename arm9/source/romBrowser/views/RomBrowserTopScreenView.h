@@ -11,12 +11,9 @@ class IRomBrowserViewFactory;
 
 class RomBrowserTopScreenView : public ViewContainer
 {
-public:
-    RomBrowserTopScreenView(const SharedPtr<RomBrowserViewModel>& viewModel,
-        const RomBrowserDisplayMode* displayMode,
-        const IThemeFileIconFactory* themeFileIconFactory,
-        const IRomBrowserViewFactory* romBrowserViewFactory);
+    SHARED_ONLY(RomBrowserTopScreenView)
 
+public:
     void InitVram(const VramContext& vramContext) override;
     void Update() override;
     void VBlank() override;
@@ -29,7 +26,7 @@ public:
 private:
     SharedPtr<RomBrowserViewModel> _viewModel;
     const IThemeFileIconFactory* _themeFileIconFactory;
-    std::unique_ptr<BannerView> _fileInfoView;
+    SharedPtr<BannerView> _fileInfoView;
     std::unique_ptr<FileIcon> _selectedFileIcon;
     SharedPtr<FileCover> _selectedFileCover;
     int _lastSelectedItem = -1;
@@ -37,4 +34,9 @@ private:
     bool _coverGraphicsUploaded = false;
     bool _showCover;
     Point _coverPosition;
+
+    RomBrowserTopScreenView(SharedPtr<RomBrowserViewModel> viewModel,
+        const RomBrowserDisplayMode* displayMode,
+        const IThemeFileIconFactory* themeFileIconFactory,
+        const IRomBrowserViewFactory* romBrowserViewFactory);
 };
