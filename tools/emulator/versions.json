@@ -1,36 +1,36 @@
 {
   "format": 1,
   "core": {
-    "version": "1.1.0-pico.2",
-    "source_revision": "9c9d6c390b69427ee320e30c9639e69503c8ac79",
+    "version": "1.1.0-pico.4",
+    "source_revision": "c766d132f0608cd069fde7f18fc9ebbb1150b4c9",
     "upstream_base_revision": "8587968a5e77acb51fdd76caa2bf04d17ce56082",
     "contribution_branch": "feat/nds-storage-image",
     "windows": {
-      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.2/emucap-1.1.0-pico.2-x86_64-pc-windows-msvc.zip",
-      "sha256": "73531f68323b291bad06472dd898b7d8f440e4cd608b4f457e9ef59dee457666",
-      "root": "emucap-1.1.0-pico.2-x86_64-pc-windows-msvc"
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-x86_64-pc-windows-msvc.zip",
+      "sha256": "58f8f827073366d6edd0522c7b51687075490a454eeefd9296d161dca11035da",
+      "root": "emucap-1.1.0-pico.4-x86_64-pc-windows-msvc"
     },
     "linux": {
-      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.2/emucap-1.1.0-pico.2-x86_64-unknown-linux-gnu.tar.gz",
-      "sha256": "e62b5ebdc6337939cdb553844857000fbd5355e094a005bd45db5cadf478957e",
-      "root": "emucap-1.1.0-pico.2-x86_64-unknown-linux-gnu"
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "c6be6209d987f486546d40a5ac6ae129a1d043065b466dff480ef7b542eb4cfd",
+      "root": "emucap-1.1.0-pico.4-x86_64-unknown-linux-gnu"
     }
   },
   "desmume": {
-    "version": "1.1.0-pico.2",
+    "version": "1.1.0-pico.4",
     "source_revision": "1275dc64f5d1f5ef18dc1bc1fa9e012024b6df1a",
     "windows": {
-      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.2/emucap-1.1.0-pico.2-desmume-nds-windows-x86_64.zip",
-      "sha256": "67877cb5ccaf5e99814231692146c0b7c3f52e86ccf966ebf2eddecd104dc0d4",
-      "root": "emucap-1.1.0-pico.2-desmume-nds-windows-x86_64"
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-desmume-nds-windows-x86_64.zip",
+      "sha256": "0ffb0cc4824c33a893efb713138c12391380e2424e5a59227bc0fca4c842f777",
+      "root": "emucap-1.1.0-pico.4-desmume-nds-windows-x86_64"
     },
     "linux": {
-      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.2/emucap-1.1.0-pico.2-desmume-nds-x86_64-unknown-linux-gnu.tar.gz",
-      "sha256": "c40b5657179d8e20118ecd7b5ead461773255e288f4ca9a2c6a9b5793cbbfa0c",
-      "root": "emucap-1.1.0-pico.2-desmume-nds-x86_64-unknown-linux-gnu"
+      "url": "https://github.com/getBoolean/emucap/releases/download/1.1.0-pico.4/emucap-1.1.0-pico.4-desmume-nds-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "43f168b9af77f8cd313c5342b6aaa9a3ca22d027a73a8009fde538ed6bda9fdf",
+      "root": "emucap-1.1.0-pico.4-desmume-nds-x86_64-unknown-linux-gnu"
     },
-    "emucap_source_revision": "9c9d6c390b69427ee320e30c9639e69503c8ac79",
-    "patchset_sha256": "6ad5a4a0cd762f064b53a5ce5212c7eb05b6cbdf8ee2e513bf2b55b6163e0d5b"
+    "emucap_source_revision": "c766d132f0608cd069fde7f18fc9ebbb1150b4c9",
+    "patchset_sha256": "d72c44a55ddd3fb901d585a36cafa21490fc514763080f26e5297acd70a06b89"
   },
   "loader": {
     "version": "1.7.1",

@@ -9,6 +9,11 @@ on:
     paths-ignore:
       - 'README.md'
   workflow_dispatch:
+    inputs:
+      emulator_failure_probe:
+        description: Deliberately fail one emulator case to verify diagnostic publication
+        type: boolean
+        default: false
 
 jobs:
   host_regressions:
@@ -76,3 +81,52 @@ jobs:
             tools/emulator/versions.json
           name: Pico_Emulator_Fixture
           if-no-files-found: error
+  emulator_search:
+    needs: pico_launcher
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    name: Native emulator search regressions
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Pico_Emulator_Fixture
+          path: out/emulator/ci-fixture
+      - name: Install locked SDK and native packages
+        run: |
+          set -euo pipefail
+          mkdir -p out/emulator/ci-evidence
+          cmp tools/emulator/versions.json out/emulator/ci-fixture/tools/emulator/versions.json
+          python -m venv .venv-emulator
+          .venv-emulator/bin/python -m pip install --require-hashes -r tests/emulator/requirements.lock
+          bash tools/emulator/install-linux.sh --destination "$RUNNER_TEMP/pico-emucap" | tee out/emulator/ci-evidence/install.json
+          .venv-emulator/bin/python -m unittest discover -s tests/emulator -p 'test_*.py'
+      - name: Run native search cases
+        env:
+          FAILURE_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.emulator_failure_probe }}
+        run: |
+          set -euo pipefail
+          extra=()
+          if [ "$FAILURE_PROBE" = true ]; then extra=(--case current-folder --failure-probe); fi
+          .venv-emulator/bin/python tests/emulator/search_cases.py \
+            --install-manifest "$RUNNER_TEMP/pico-emucap/install.json" \
+            --rom out/emulator/ci-fixture/LAUNCHER.nds \
+            --elf out/emulator/ci-fixture/build/arm9.elf \
+            --fixture out/emulator/ci-fixture/out/emulator/fixture \
+            --output out/emulator/ci-evidence/search "${extra[@]}"
+      - name: Publish emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Pico_Search_Evidence
+          path: |
+            out/emulator/ci-evidence/
+            !out/emulator/ci-evidence/**/auth
+            !out/emulator/ci-evidence/**/session-token-*
+          if-no-files-found: warn

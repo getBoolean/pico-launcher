@@ -6,7 +6,9 @@ the same packages, card fixtures and expected outcomes. The emucap fork keeps
 packaging on `pico/1.1.0-storage`.
 
 The fork's native DeSmuME packages include the CompactFlash command/status fix
-needed for Pico Loader to initialize the card. The dependency lock records both
+needed for Pico Loader to initialize the card. They also preserve halfword-aligned
+Thumb addresses on LDM exception returns, avoiding replayed instructions and ARM7
+stack corruption during repeated card searches. The dependency lock records both
 the upstream revision and the applied patch-stack hash.
 
 ## Package setup
@@ -138,3 +140,30 @@ out/emulator/.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests/emul
 Package and fixture checks establish their declared host-side contracts. Native
 MCP access, guest state, reviewed visual baselines and physical DS behavior each
 need their own evidence. Physical DS checks remain owner-run.
+
+
+## Search scenarios and CI
+
+The build's `Pico_Emulator_Fixture` artifact contains matching ROM, ELF, card and
+lock identities. Extract it into `out/emulator/ci-fixture`, then run:
+
+```powershell
+out/emulator/.venv/Scripts/python.exe tests/emulator/search_cases.py --install-manifest '<install.json>' --rom out/emulator/ci-fixture/LAUNCHER.nds --elf out/emulator/ci-fixture/build/arm9.elf --fixture out/emulator/ci-fixture/out/emulator/fixture --output out/emulator/windows-search
+```
+
+See [the scenario reference](../tests/emulator/SEARCH_TESTS.md) for assertions
+and short-tap checks. The observer derives fields and function addresses from the
+matching ELF and reads a frozen guest through the same MCP connection. In-flight
+cases verify the original task is Running at its input-handler boundary.
+
+The Ubuntu 24.04 job downloads the exact build artifact and locked Linux packages
+and runs the same scenarios. `Pico_Search_Evidence` is uploaded even on failure.
+It includes runtime hashes, immutable inputs, traces, state assertions,
+screenshots, failed images and the exact-generation stop result. A manual run
+with `emulator_failure_probe` enabled deliberately fails after boot; its report
+must name the probe and confirm cleanup to qualify failure-evidence publication.
+
+The native scenarios currently use Material and the horizontal icon grid.
+Screenshots are review evidence, not approved cross-platform visual baselines.
+Other themes/layouts and physical DS timing need separate verification. Search
+case images remain `flush_unconfirmed` unless a persistence read witness exists.

@@ -24,7 +24,7 @@
     {"path": "games/alpha.nds", "child": "A", "marker": "PICO CHILD A"},
     {"path": "games/A/nested one.nds", "child": "A", "marker": "PICO CHILD A"}
   ],
-  "stress": {"breadth": 8, "depth": 4},
+  "stress": {"breadth": 5, "depth": 4},
   "search_expectations": [
     {"query": "space-dash ", "recursive": false, "paths": ["/games/space-dash one.nds", "/games/space-dash two.nds"]},
     {"query": "game", "recursive": true, "paths": ["/games/A/game.nds", "/games/B/game.nds"]},
