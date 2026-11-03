@@ -10,7 +10,7 @@
 #include "RecursiveSdFolderFactory.h"
 
 extern "C" void shared_ptr_increase_ref_count(vu32& count) { count = count + 1; }
-size_t strlcat(char* dest, const char* source, size_t size)
+extern "C" size_t strlcat(char* dest, const char* source, size_t size) noexcept
 {
     size_t used = strnlen(dest, size), length = strlen(source);
     if (used < size) { strncat(dest, source, size - used - 1); }
