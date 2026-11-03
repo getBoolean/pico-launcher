@@ -1,5 +1,6 @@
 #include "common.h"
 #include <cassert>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -109,6 +110,43 @@ int main()
     for (int i = 0; i < RecursiveSdFolderFactory::MAX_RESULTS + 20; ++i)
         tree["."].push_back({"game" + std::to_string(i) + ".nds"});
     assert(search()->GetFileCount() == RecursiveSdFolderFactory::MAX_RESULTS);
+
+    reset();
+    for (int i = 0; i < RecursiveSdFolderFactory::MAX_RESULTS + 20; ++i)
+        tree["."].push_back({"gmae" + std::to_string(i) + ".nds"});
+    tree["."].push_back({"game-late.nds"});
+    result = search();
+    assert(result->GetFileCount() == RecursiveSdFolderFactory::MAX_RESULTS);
+    SdFolderFilterSortParams ranked;
+    ranked.searchQuery = "game";
+    u32 rankedCount;
+    auto rankedFiles = result->FilterAndSort(ranked, rankedCount);
+    assert(rankedCount == RecursiveSdFolderFactory::MAX_RESULTS);
+    assert(!strcmp(rankedFiles[0]->GetFileName(), "game-late.nds"));
+    for (auto direction : {SdFolderSortDirection::Ascending, SdFolderSortDirection::Descending})
+    {
+        reset();
+        std::vector<std::string> expected;
+        for (int i = 0; i < RecursiveSdFolderFactory::MAX_RESULTS + 20; ++i)
+        {
+            auto name = "game" + std::to_string(i) + ".nds";
+            tree["."].push_back({name});
+            expected.push_back(name);
+        }
+        std::sort(expected.begin(), expected.end());
+        if (direction == SdFolderSortDirection::Descending)
+            std::reverse(expected.begin(), expected.end());
+        result = factory.CreateFromPathRecursive(".", "game", canceled, direction);
+        ranked.sortDirection = direction;
+        rankedFiles = result->FilterAndSort(ranked, rankedCount);
+        assert(rankedCount == RecursiveSdFolderFactory::MAX_RESULTS);
+        for (u32 i = 0; i < rankedCount; ++i)
+            assert(expected[i] == rankedFiles[i]->GetFileName());
+        assert(openDirectories.empty());
+        cancelAt = 270; reads = 0;
+        assert(!factory.CreateFromPathRecursive(".", "game", canceled, direction));
+        assert(openDirectories.empty());
+    }
 
     reset(); tree["."] = {{"A", AM_DIR}}; tree["A"] = {{"game.nds"}};
     cancelAt = 2; assert(!search());

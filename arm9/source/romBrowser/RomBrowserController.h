@@ -89,6 +89,7 @@ private:
     bool _saveSettingsPending = false;
     char _searchQuery[32] {};
     bool _searchIncludeSubFolders = false;
+    SdFolderSortDirection _searchSortDirection = SdFolderSortDirection::Ascending;
     bool _searchResultsUpdated = false;
     /// @brief Subfolder search results; shown instead of _sdFolder when set.
     SharedPtr<SdFolder> _searchResultFolder;

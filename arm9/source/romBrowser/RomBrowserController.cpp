@@ -101,13 +101,16 @@ void RomBrowserController::ApplySearch(const char* query, bool includeSubFolders
 
     if (includeSubFolders)
     {
+        const auto direction = GetRomBrowserDisplaySettings().sortMode == RomBrowserSortMode::NameAscending
+            ? SdFolderSortDirection::Ascending : SdFolderSortDirection::Descending;
+        _searchSortDirection = direction;
         // The current results stay visible until the new search completes
         auto queryCopy = SharedPtr<std::array<char, sizeof(_searchQuery)>>::MakeShared();
         StringUtil::Copy(queryCopy->data(), _searchQuery, queryCopy->size());
-        _searchTask = _ioTaskQueue->Enqueue([this, queryCopy] (const vu8& cancelRequested)
+        _searchTask = _ioTaskQueue->Enqueue([this, queryCopy, direction] (const vu8& cancelRequested)
         {
             RecursiveSdFolderFactory factory { &_fileTypeProvider };
-            auto result = factory.CreateFromPathRecursive(".", queryCopy->data(), cancelRequested);
+            auto result = factory.CreateFromPathRecursive(".", queryCopy->data(), cancelRequested, direction);
             if (!result)
                 return TaskResult<SharedPtr<SdFolder>>::Canceled();
             return TaskResult<SharedPtr<SdFolder>>::Completed(result);
@@ -332,6 +335,15 @@ void RomBrowserController::HandleLaunchTrigger()
 void RomBrowserController::HandleChangeDisplayModeTrigger()
 {
     LOG_DEBUG("RomBrowserStateTrigger::ChangeDisplayMode\n");
+    const auto direction = GetRomBrowserDisplaySettings().sortMode == RomBrowserSortMode::NameAscending
+        ? SdFolderSortDirection::Ascending : SdFolderSortDirection::Descending;
+    if (_searchIncludeSubFolders && _searchQuery[0] && direction != _searchSortDirection)
+    {
+        std::array<char, sizeof(_searchQuery)> query;
+        StringUtil::Copy(query.data(), _searchQuery, query.size());
+        ApplySearch(query.data(), true);
+        return;
+    }
     RecreateRomBrowserViewModel();
 }
 
