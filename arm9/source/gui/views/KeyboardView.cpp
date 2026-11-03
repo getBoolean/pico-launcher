@@ -1,8 +1,8 @@
 #include "common.h"
 #include <string.h>
-#include <bit>
 #include "gui/IVramManager.h"
-#include "gui/Gx.h"
+#include "gui/OamBuilder.h"
+#include "gui/palette/GradientPalette.h"
 #include "gui/VramContext.h"
 #include "gui/GraphicsContext.h"
 #include "gui/input/InputProvider.h"
@@ -23,19 +23,11 @@ const char* const KeyboardView::sRows[ROW_COUNT] = { sRow0, sRow1, sRow2, sRow3 
 const int KeyboardView::sRowLengths[ROW_COUNT] = { 10, 10, 10, 9 };
 const int KeyboardView::sRowOffsets[ROW_COUNT] = { 0, 0, 10, 20 };
 
-KeyboardView::KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader,
-    u32 textureOffset)
-    : _font(font), _vblankTextureLoader(vblankTextureLoader), _texVramOffset(textureOffset)
+KeyboardView::KeyboardView(const nft2_header_t* font)
+    : _font(font)
 {
-    u32 texWidth = std::bit_ceil((u32)KEYBOARD_WIDTH);
-    u32 texHeight = KEYBOARD_HEIGHT;
-    _tileBufferSize = texWidth * texHeight;
+    _tileBufferSize = (BUFFER_WIDTH * BUFFER_HEIGHT) >> 1;
     _tileBuffer = std::make_unique_for_overwrite<u8[]>(_tileBufferSize);
-}
-
-KeyboardView::~KeyboardView()
-{
-    _vblankTextureLoader->CancelLoad(_textureLoadRequest);
 }
 
 char KeyboardView::GetKeyAt(int row, int col) const
@@ -55,12 +47,11 @@ void KeyboardView::ClampCol()
 
 void KeyboardView::RenderKeyboard()
 {
-    u32 texWidth = std::bit_ceil((u32)KEYBOARD_WIDTH);
     memset(_tileBuffer.get(), 0, _tileBufferSize);
 
     char16_t charBuf[2] = { 0, 0 };
     nft2_string_render_params_t renderParams;
-    renderParams.a5i3 = true;
+    renderParams.a5i3 = false;
     renderParams.onlyRenderWholeGlyphs = true;
 
     for (int row = 0; row < ROW_COUNT; row++)
@@ -95,18 +86,32 @@ void KeyboardView::RenderKeyboard()
             renderParams.y = cy;
             renderParams.width = KEYBOARD_WIDTH;
             renderParams.height = KEYBOARD_HEIGHT;
-            nft2_renderString(_font, charBuf, _tileBuffer.get(), texWidth, &renderParams);
+            nft2_renderString(_font, charBuf, _tileBuffer.get(), BUFFER_WIDTH / 4, &renderParams);
         }
     }
 
-    _vblankTextureLoader->CancelLoad(_textureLoadRequest);
-    _textureLoadRequest = VBlankTextureLoadRequest(_tileBuffer.get(), _tileBufferSize,
-        _texVramOffset, nullptr, 0, 0, nullptr, nullptr);
-    _vblankTextureLoader->RequestLoad(_textureLoadRequest);
+    _tileBufferUpdated = true;
 }
 
 void KeyboardView::InitVram(const VramContext& vramContext)
 {
+    const auto objVramManager = vramContext.GetObjVramManager();
+    if (objVramManager)
+    {
+        _vramOffset = objVramManager->Alloc(_tileBufferSize);
+        _vramAddress = objVramManager->GetVramAddress(_vramOffset);
+        _highlightVramOffset = objVramManager->Alloc(512);
+        u8 highlightTiles[512] {};
+        for (u32 y = 0; y < KEY_HEIGHT; y++)
+        {
+            for (u32 x = 0; x < KEY_WIDTH; x++)
+            {
+                u32 pixel = ((y >> 3) * 4 + (x >> 3)) * 64 + (y & 7) * 8 + (x & 7);
+                highlightTiles[pixel >> 1] |= 15 << ((pixel & 1) * 4);
+            }
+        }
+        memcpy((void*)objVramManager->GetVramAddress(_highlightVramOffset), highlightTiles, sizeof(highlightTiles));
+    }
     RenderKeyboard();
 }
 
@@ -116,61 +121,51 @@ void KeyboardView::Update()
 
 void KeyboardView::Draw(GraphicsContext& graphicsContext)
 {
-    if (!graphicsContext.IsVisible(GetBounds()))
+    if (!graphicsContext.IsVisible(GetBounds()) || !_vramAddress)
         return;
 
-    u32 texWidth = std::bit_ceil((u32)KEYBOARD_WIDTH);
-
-    // Draw focus highlight as a solid colored 3D quad behind the focused key
+    // OAM allocation runs backwards, so allocate the highlight before the text.
     if (_isFocused)
     {
         int keyX = _position.x + sRowOffsets[_focusRow] + _focusCol * KEY_WIDTH;
         int keyY = _position.y + _focusRow * KEY_HEIGHT;
-
-        Gx::MtxIdentity();
-        Gx::PolygonAttr(GX_LIGHTMASK_NONE, GX_POLYGON_MODE_DECAL, GX_DISPLAY_MODE_FRONT,
-            false, false, false, GX_DEPTH_FUNC_LESS, false, 31, graphicsContext.GetPolygonId());
-        Gx::Color(Rgb<5, 5, 5>(_highlightColor));
-        Gx::Begin(GX_PRIMITIVE_QUAD);
-        REG_GX_VTX_16 = GX_VTX_PACK(keyX << 6, keyY << 3);
-        REG_GX_VTX_16 = (201) << 6;
-        REG_GX_VTX_16 = GX_VTX_PACK(keyX << 6, (keyY + KEY_HEIGHT) << 3);
-        REG_GX_VTX_16 = (201) << 6;
-        REG_GX_VTX_16 = GX_VTX_PACK((keyX + KEY_WIDTH) << 6, (keyY + KEY_HEIGHT) << 3);
-        REG_GX_VTX_16 = (201) << 6;
-        REG_GX_VTX_16 = GX_VTX_PACK((keyX + KEY_WIDTH) << 6, keyY << 3);
-        REG_GX_VTX_16 = (201) << 6;
-        Gx::End();
+        u32 paletteRow = graphicsContext.GetPaletteManager().AllocRow(
+            GradientPalette(_highlightColor, _highlightColor), keyY, keyY + KEY_HEIGHT);
+        auto oam = graphicsContext.GetOamManager().AllocOams(1);
+        OamBuilder::OamWithSize<32, 32>(keyX, keyY, _highlightVramOffset >> 7)
+            .WithPalette16(paletteRow)
+            .WithPriority(graphicsContext.GetPriority())
+            .Build(oam[0]);
     }
 
-    // Draw keyboard text as 3D textured quad
+    constexpr u32 hCellCount = BUFFER_WIDTH / 32;
+    constexpr u32 vCellCount = BUFFER_HEIGHT / 16;
+    auto oams = graphicsContext.GetOamManager().AllocOams(hCellCount * vCellCount);
+    u32 paletteRow = graphicsContext.GetPaletteManager().AllocRow(
+        GradientPalette(_backgroundColor, _foregroundColor), _position.y, _position.y + KEYBOARD_HEIGHT);
+    u32 i = 0;
+    for (u32 y = 0; y < vCellCount; y++)
     {
-        Gx::MtxIdentity();
-        Gx::PolygonAttr(GX_LIGHTMASK_NONE, GX_POLYGON_MODE_MODULATE, GX_DISPLAY_MODE_FRONT,
-            false, false, false, GX_DEPTH_FUNC_LESS, false, 31, graphicsContext.GetPolygonId());
-        Gx::TexImageParam(_texVramOffset >> 3, false, false, false, false,
-            (GxTexSize)(std::bit_width(texWidth) - 4),
-            GX_TEXSIZE_1024, GX_TEXFMT_A5I3, false, GX_TEXGEN_NONE);
-        graphicsContext.GetRgb6Palette()->ApplyColor(Rgb<6, 6, 6>(_foregroundColor));
-        Gx::Begin(GX_PRIMITIVE_QUAD);
-        Gx::TexCoord(0, 0);
-        REG_GX_VTX_16 = GX_VTX_PACK(_position.x << 6, _position.y << 3);
-        REG_GX_VTX_16 = (200) << 6;
-        Gx::TexCoord(0, (int)KEYBOARD_HEIGHT);
-        REG_GX_VTX_16 = GX_VTX_PACK(_position.x << 6, (_position.y + KEYBOARD_HEIGHT) << 3);
-        REG_GX_VTX_16 = (200) << 6;
-        Gx::TexCoord((int)KEYBOARD_WIDTH, (int)KEYBOARD_HEIGHT);
-        REG_GX_VTX_16 = GX_VTX_PACK((_position.x + KEYBOARD_WIDTH) << 6, (_position.y + KEYBOARD_HEIGHT) << 3);
-        REG_GX_VTX_16 = (200) << 6;
-        Gx::TexCoord((int)KEYBOARD_WIDTH, 0);
-        REG_GX_VTX_16 = GX_VTX_PACK((_position.x + KEYBOARD_WIDTH) << 6, _position.y << 3);
-        REG_GX_VTX_16 = (200) << 6;
-        Gx::End();
+        for (u32 x = 0; x < hCellCount; x++)
+        {
+            OamBuilder::OamWithSize<32, 16>(
+                    _position.x + x * 32, _position.y + y * 16,
+                    (_vramOffset + i * 256) >> 7)
+                .WithPalette16(paletteRow)
+                .WithPriority(graphicsContext.GetPriority())
+                .Build(oams[i]);
+            i++;
+        }
     }
 }
 
 void KeyboardView::VBlank()
 {
+    if (_tileBufferUpdated && _vramAddress)
+    {
+        memcpy((void*)_vramAddress, _tileBuffer.get(), _tileBufferSize);
+        _tileBufferUpdated = false;
+    }
 }
 
 bool KeyboardView::HandleInput(const InputProvider& inputProvider, FocusManager& focusManager)

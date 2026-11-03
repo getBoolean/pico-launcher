@@ -7,7 +7,6 @@
 class IRomBrowserController;
 class MaterialColorScheme;
 class IFontRepository;
-class VBlankTextureLoader;
 
 class SearchBottomSheetView : public BottomSheetView
 {
@@ -48,8 +47,7 @@ private:
 
     SearchBottomSheetView(IRomBrowserController* controller,
         const MaterialColorScheme* materialColorScheme,
-        const IFontRepository* fontRepository,
-        VBlankTextureLoader* vblankTextureLoader, u32 keyboardTextureOffset);
+        const IFontRepository* fontRepository);
 
     static void OnKeyPress(char key, void* context);
     void HandleKeyPress(char key);

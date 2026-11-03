@@ -24,15 +24,13 @@
 
 SearchBottomSheetView::SearchBottomSheetView(IRomBrowserController* controller,
     const MaterialColorScheme* materialColorScheme,
-    const IFontRepository* fontRepository,
-    VBlankTextureLoader* vblankTextureLoader, u32 keyboardTextureOffset)
+    const IFontRepository* fontRepository)
     : _controller(controller)
     , _materialColorScheme(materialColorScheme)
     , _titleLabel(Label2DView::CreateShared(128, 16, 25, fontRepository->GetFont(FontType::Medium11)))
     , _queryLabel(Label2DView::CreateShared(176, 14, MAX_TEXT_LENGTH + 1, fontRepository->GetFont(FontType::Regular10)))
     , _hintLabel(Label2DView::CreateShared(176, 14, 25, fontRepository->GetFont(FontType::Regular10)))
-    , _keyboardView(KeyboardView::CreateShared(fontRepository->GetFont(FontType::Regular10),
-        vblankTextureLoader, keyboardTextureOffset))
+    , _keyboardView(KeyboardView::CreateShared(fontRepository->GetFont(FontType::Regular10)))
     , _subFolderToggle(IconButton2DView::CreateShared(
         IconButtonView::Type::Tonal,
         IconButtonView::State::ToggleUnselected,

@@ -1,7 +1,6 @@
 #pragma once
 #include "View.h"
 #include "gui/font/nitroFont2.h"
-#include "gui/VBlankTextureLoader.h"
 #include "core/math/Rgb.h"
 
 class IVramManager;
@@ -11,7 +10,6 @@ class alignas(32) KeyboardView : public View
     SHARED_ONLY(KeyboardView)
 
 public:
-    ~KeyboardView() override;
     typedef void (*key_callback_t)(char key, void* context);
 
     void InitVram(const VramContext& vramContext) override;
@@ -50,7 +48,6 @@ public:
 
     static constexpr int KEYBOARD_WIDTH = 220;
     static constexpr int KEYBOARD_HEIGHT = 80;
-    static constexpr u32 TEXTURE_SIZE = 256 * KEYBOARD_HEIGHT;
 
 private:
     static constexpr int KEY_WIDTH = 20;
@@ -63,8 +60,6 @@ private:
     static const int sRowOffsets[ROW_COUNT];
 
     const nft2_header_t* _font;
-    VBlankTextureLoader* _vblankTextureLoader;
-    VBlankTextureLoadRequest _textureLoadRequest;
 
     key_callback_t _onKeyPress = nullptr;
     void* _onKeyPressContext = nullptr;
@@ -80,11 +75,15 @@ private:
     int _penDownRow = -1;
     int _penDownCol = -1;
 
-    u32 _texVramOffset = 0;
+    static constexpr u32 BUFFER_WIDTH = (KEYBOARD_WIDTH + 31) & ~31;
+    static constexpr u32 BUFFER_HEIGHT = (KEYBOARD_HEIGHT + 15) & ~15;
+    u32 _vramOffset = 0;
+    u32 _highlightVramOffset = 0;
+    vu16* _vramAddress = nullptr;
+    bool _tileBufferUpdated = false;
     u32 _tileBufferSize = 0;
     std::unique_ptr<u8[]> _tileBuffer;
-    KeyboardView(const nft2_header_t* font, VBlankTextureLoader* vblankTextureLoader,
-        u32 textureOffset);
+    explicit KeyboardView(const nft2_header_t* font);
 
     void RenderKeyboard();
     char GetKeyAt(int row, int col) const;

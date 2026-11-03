@@ -100,7 +100,6 @@ private:
 
     ChipView::VramToken _chipViewVram;
     IconButton2DView::VramToken _iconButtonViewVram;
-    u32 _keyboardTextureOffset = 0;
 
     bool _vcountIrqStarted = false;
 

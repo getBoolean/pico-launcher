@@ -135,8 +135,6 @@ void App::Run()
 
     LoadTheme();
 
-    _keyboardTextureOffset = _textureVram.Alloc(KeyboardView::TEXTURE_SIZE);
-
     _ioTaskQueue.StartThread(1, _ioTaskThreadStack, sizeof(_ioTaskThreadStack));
     _bgTaskQueue.StartThread(2, _bgTaskThreadStack, sizeof(_bgTaskThreadStack));
 
@@ -353,7 +351,7 @@ void App::HandleShowSearchTrigger()
 {
     auto searchDialog = SearchBottomSheetView::CreateShared(
         &_romBrowserController, &_theme->GetMaterialColorScheme(),
-        _theme->GetFontRepository(), &_vblankTextureLoader, _keyboardTextureOffset);
+        _theme->GetFontRepository());
     searchDialog->SetGraphics(_iconButtonViewVram);
     _dialogPresenter.ShowDialog(std::move(searchDialog));
 }
