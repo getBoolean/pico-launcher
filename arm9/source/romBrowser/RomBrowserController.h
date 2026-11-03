@@ -38,6 +38,7 @@ public:
     void ApplySearch(const char* query, bool includeSubFolders) override;
     bool ConsumeSearchResultsUpdated();
     const char* GetSearchQuery() const override { return _searchQuery; }
+    const char* GetCurrentFolderPath() const override { return _currentFolderPath.get(); }
     void ClearSearch() override;
     void CancelSearchTask();
     bool IsSearchActive() const override { return _searchQuery[0] != 0; }
@@ -78,6 +79,8 @@ private:
     SharedPtr<SdFolder> _sdFolder;
     SharedPtr<RomBrowserViewModel> _romBrowserViewModel;
     std::unique_ptr<SdFolder> _newSdFolder;
+    std::unique_ptr<char[]> _newFolderPath;
+    std::unique_ptr<char[]> _currentFolderPath;
     RomBrowserStateMachine _stateMachine;
     TCHAR _navigatePath[256];
     TCHAR* _navigateFileName;

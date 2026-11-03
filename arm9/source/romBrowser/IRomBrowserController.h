@@ -30,6 +30,8 @@ public:
     virtual void HideSearch() = 0;
     virtual void ApplySearch(const char* query, bool includeSubFolders) = 0;
     virtual const char* GetSearchQuery() const = 0;
+    /// @return The actual loaded folder's full UTF-8 path, or null if unavailable.
+    virtual const char* GetCurrentFolderPath() const = 0;
     virtual void ClearSearch() = 0;
     virtual bool IsSearchActive() const = 0;
     virtual bool IsSearchIncludingSubFolders() const = 0;

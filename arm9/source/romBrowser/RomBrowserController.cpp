@@ -1,6 +1,7 @@
 #include "common.h"
 #include <array>
 #include <string.h>
+#include "fat/CurrentDirectoryPath.h"
 #include "picoLoaderBootstrap.h"
 #include "PicoLoaderProcess.h"
 #include "settings/SettingsProcess.h"
@@ -298,6 +299,7 @@ void RomBrowserController::HandleNavigateTrigger()
         f_chdir(_navigatePath);
         SdFolderFactory sdFolderFactory { &_fileTypeProvider };
         _newSdFolder = sdFolderFactory.CreateFromPath(".");
+        _newFolderPath = ReadCurrentDirectoryPath();
         u64 endTick = gTickCounter.GetValue();
         LOG_DEBUG("Loading files in folder took: %d us\n", (u32)TickCounter::TicksToMicroSeconds(endTick - startTick));
         return TaskResult<void>::Completed();
@@ -310,6 +312,7 @@ void RomBrowserController::HandleFolderLoadDoneTrigger()
     _romBrowserViewModel.Reset();
     _searchResultFolder.Reset();
     _sdFolder = SharedPtr<SdFolder>(_newSdFolder.release());
+    _currentFolderPath = std::move(_newFolderPath);
     RecreateRomBrowserViewModel(_navigateFileName);
 }
 
