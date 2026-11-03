@@ -43,9 +43,6 @@ public:
     int GetFocusedRow() const { return _focusRow; }
     int GetFocusedCol() const { return _focusCol; }
 
-    /// @brief Gets whether the focused key is the last key of its row.
-    bool IsFocusAtRowEnd() const { return _focusCol == sRowLengths[_focusRow] - 1; }
-
     static constexpr int KEYBOARD_WIDTH = 220;
     static constexpr int KEYBOARD_HEIGHT = 80;
 

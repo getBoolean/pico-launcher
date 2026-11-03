@@ -18,7 +18,7 @@ namespace
     {
         unsigned first = static_cast<unsigned char>(*cursor++);
         unsigned extra = first >= 0xF0 ? 3 : first >= 0xE0 ? 2 : first >= 0xC0 ? 1 : 0;
-        if (!extra || end - cursor < extra)
+        if (!extra || static_cast<size_t>(end - cursor) < extra)
             return FoldAscii(first);
         unsigned value = first & (0x7F >> (extra + 1));
         for (unsigned i = 0; i < extra; i++)
@@ -96,7 +96,7 @@ int SearchMatcher::Match(const char* fileName)
     while (cursor < end)
     {
         unsigned character = ReadCharacter(cursor, end);
-        current[0] = 0; // A candidate substring may start at any character.
+        current[0] = 0;
         for (unsigned j = 1; j <= _queryLength; j++)
         {
             unsigned distance = std::min({

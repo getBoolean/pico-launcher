@@ -100,6 +100,8 @@ SharedPtr<SdFolder> RecursiveSdFolderFactory::CreateFromPathRecursive(
         const size_t separatorLength = cwdLength && cwd[cwdLength - 1] == '/' ? 0 : 1;
         if (cwdLength + separatorLength + parentLength + strlen(sdFileInfo->fname) >= 256)
             continue;
+        if (count == MAX_RESULTS && score > candidates[0].score)
+            continue;
 
         auto file = std::make_unique<FileInfo>(sdFileInfo->fname, fileType,
             FastFileRef(&current.directory, sdFileInfo.get()), sdFileInfo->fattrib,
